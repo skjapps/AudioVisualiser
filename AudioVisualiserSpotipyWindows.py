@@ -7,6 +7,7 @@ import PyAudioWrapper
 import SpotipyWrapper
 import ctypes
 import random
+import configparser
 
 from PIL import Image
 
@@ -28,38 +29,44 @@ OriginalAppResolution = (960,540)
 #####################################
 #           Customisation           #
 #####################################
-# Cache folder size limit (in MB)
-cache_limit = 1
+# Initialize the parser
+config = configparser.ConfigParser()
 
-# (With set defaults)
-Style = "Bars"                                # Style can be "Bars" for monstercat-esque, or "Smooth" for EQ like
-NumOfBars = 80                                # Adjust this value for more or less bars (log bins)
-smoothing_factor = 0.7                        # Adjust this value between 0 and 1 for more or less smoothing
-FrameRate = 60                                # Adjust this value 60+ for more updates and refreshes?
-Background = None                             # This sets the background image or GIF
-BackgroundColour = (75,75,75)                 # Default Background colour
-BackgroundFPS = 36                            # Background FrameRate
-Colour = (255,255,255)                        # Sets the colour of the visualisation (RGB)
-VisualiserPosition = (0,0)                    # Position of the visualisation (x%, y%) move
-Size = (1,1)                                  # Size of visualisation (0 to 1) NOT WORKING YET (rect spawns wrong place use scale)
-NOFRAME = False                               # No border (window title bar)
-FULLSCREEN = False                            # Fullscreen
-BackgroundScale = "Fit"                       # UNIMPLEMENTED "Fill", "Fit", "Stretch", "Center", "Span"
-BassPump = 0                                  # 0 to 1 for more bass shown
+# Read the configuration file
+config.read('config.cfg')
 
-ArtistNamePosition = (0.02,0.95)              # Position of the artist name (x%, y%) move
-# Size of font for artist name
-ArtistNameFontSize = ResizedArtistNameFontSize = 56
-SongNamePosition = (0.02,0.95)                # Position of the song name (x%, y%) move
-# Size of font for song name
-SongNameFontSize = ResizedSongNameFontSize = 74
-AlbumArtPosition = (0.775,0.95)               # Position of the album art image (x%, y%) move
-# Mulitplier (ie 1x, 1.5x, 2x) of art size
-AlbumArtSize = 1
+# Access the settings
+cache_limit = config.getint('Customisation', 'cache_limit')
+
+# Graphics Customisation
+style = config.get('Customisation', 'Style')
+num_of_bars = config.getint('Customisation', 'NumOfBars')
+smoothing_factor = config.getfloat('Customisation', 'smoothing_factor')
+frame_rate = config.getint('Customisation', 'FrameRate')
+background = config.get('Customisation', 'Background')
+background_colour = tuple(map(int, config.get('Customisation', 'BackgroundColour').split(',')))
+background_fps = config.getint('Customisation', 'BackgroundFPS')
+colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
+visualiser_position = tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))
+visualiser_size = tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))
+no_frame = config.getboolean('Customisation', 'NOFRAME')
+fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
+background_scale = config.get('Customisation', 'BackgroundScale')
+bass_pump = config.getfloat('Customisation', 'BassPump')
+
+# Song Data Graphics Config
+artist_name_position = tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))
+artist_name_font_size = config.getint('Customisation', 'ArtistNameFontSize')
+song_name_position = tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))
+song_name_font_size = config.getint('Customisation', 'SongNameFontSize')
+album_art_position = tuple(map(float, config.get('Customisation', 'AlbumArtPosition').split(',')))
+album_art_size = config.getfloat('Customisation', 'AlbumArtSize')
+album_art_colouring = config.getboolean('Customisation', 'AlbumArtColouring')
+album_art_colour_vibrancy = config.getfloat('Customisation', 'AlbumArtColourVibrancy')                     
+
+ResizedArtistNameFontSize = config.getint('Customisation', 'ArtistNameFontSize')
+ResizedSongNameFontSize = config.getint('Customisation', 'SongNameFontSize')
 ResizedAlbumArtSize = 0.3
-AlbumArtColouring = True                      # Colour the graphics to the colour of the album art
-AlbumArtColourVibrancy = 1                    # 0 to 1, higher number = brighter colours from album art                      
-
 
 #####################################
 #               PYGAME              #
@@ -69,14 +76,14 @@ if os.name == 'nt' :
     ctypes.windll.user32.SetProcessDPIAware()
 # Initialize Pygame
 pygame.init()
-screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * NOFRAME) | (pygame.FULLSCREEN * FULLSCREEN)), vsync=1)
+screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)), vsync=1)
 w, h = pygame.display.get_surface().get_size()
 pygame.display.set_caption("Audio Visualiser")
 pygame.display.set_icon(pygame.image.load('assets/ico/ico.png'))
 clock = pygame.time.Clock()
 # Fonts setup
-font_song_name = pygame.font.SysFont('Arial', SongNameFontSize)
-font_artist_name = pygame.font.SysFont('Arial', ArtistNameFontSize)
+font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
+font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 
 # To initialise variables
 album_art = None
@@ -103,7 +110,7 @@ running = True
 try:
     random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
     print(random_background)
-    Background = GifSprite.GifSprite(random_background, (0,0), fps=BackgroundFPS)
+    Background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
     Background.resize_frames(OriginalAppResolution[0] / Background.size[0],
                              OriginalAppResolution[1] / Background.size[1])
 except Exception as e:
@@ -127,11 +134,11 @@ while running:
             # Info Font
             # Max instead of min for wider resolutions
             # Min instead of max for "phone" resolutions
-            ResizedSongNameFontSize = int(SongNameFontSize * max(w/OriginalAppResolution[0],
+            ResizedSongNameFontSize = int(song_name_font_size * max(w/OriginalAppResolution[0],
                                                                 h/OriginalAppResolution[1]))
-            ResizedArtistNameFontSize = int(ArtistNameFontSize * max(w/OriginalAppResolution[0],
+            ResizedArtistNameFontSize = int(artist_name_font_size * max(w/OriginalAppResolution[0],
                                                                 h/OriginalAppResolution[1]))
-            ResizedAlbumArtSize = AlbumArtSize * max(w/OriginalAppResolution[0],
+            ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
                                                             h/OriginalAppResolution[1]) * 0.3
             font_song_name = pygame.font.SysFont('Arial', ResizedSongNameFontSize)
             font_artist_name = pygame.font.SysFont('Arial', ResizedArtistNameFontSize)
@@ -156,11 +163,11 @@ while running:
         print("An error occurred:", type(error).__name__) # An error occurred: NameError
 
     
-    if Style == "Bars":
+    if style == "Bars":
         # Reduced peaks
         # Calculate logarithmic frequency bins (only once if they don't change)
         if 'log_bins' not in globals():
-            log_bins = np.logspace(0, np.log10(CHUNK//2), num=NumOfBars, base=10.0, dtype=int)
+            log_bins = np.logspace(0, np.log10(CHUNK//2), num=num_of_bars, base=10.0, dtype=int)
             log_bins = np.unique(log_bins)  # Remove duplicates
 
         drawArrayLength = len(log_bins)
@@ -172,7 +179,7 @@ while running:
 
         bass_reduction = 2
 
-    if Style == "Smooth" : 
+    if style == "Smooth" : 
         # Define the logarithmic scale
         log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
 
@@ -219,15 +226,15 @@ while running:
         screen.blit(Background.image, Background.pos)
         Background.update()
     else:
-        screen.fill(BackgroundColour)
+        screen.fill(background_colour)
 
     # Album Art colouring
     # Colour avg
     scalar = 255 - max(sp.avg_colour_album_art)
     Colour = (
-                sp.avg_colour_album_art[0] + scalar * AlbumArtColourVibrancy,
-                sp.avg_colour_album_art[1] + scalar * AlbumArtColourVibrancy, 
-                sp.avg_colour_album_art[2] + scalar * AlbumArtColourVibrancy
+                sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
+                sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy, 
+                sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
              )
 
     # Draw bars
@@ -237,14 +244,14 @@ while running:
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
             log_fft_data[i] = min(log_fft_data[i], 1)
             pygame.draw.rect(screen, (
-                                        (Colour[0] * min(log_fft_data[i], 0.5) + AlbumArtColourVibrancy * 125), 
-                                        (Colour[1] * min(log_fft_data[i], 0.5) + AlbumArtColourVibrancy * 125), 
-                                        (Colour[2] * min(log_fft_data[i], 0.5) + AlbumArtColourVibrancy * 125),
+                                        (Colour[0] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
+                                        (Colour[1] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
+                                        (Colour[2] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125),
                                     ), 
-                            (i * bar_width + (VisualiserPosition[0] * w), 
-                            h - bar_height + (-VisualiserPosition[1] * h), 
-                            bar_width * Size[0], 
-                            bar_height * Size[1]))
+                            (i * bar_width + (visualiser_position[0] * w), 
+                            h - bar_height + (-visualiser_position[1] * h), 
+                            bar_width * visualiser_size[0], 
+                            bar_height * visualiser_size[1]))
             
     # Render Spotify Data
     if sp.results != None :
@@ -252,25 +259,25 @@ while running:
         song_name = font_song_name.render(sp.results['item']['name'], 
                                           True, Colour)
         # Display song name
-        screen.blit(song_name, (w * SongNamePosition[0], 
-                                h - h * SongNamePosition[1]))
+        screen.blit(song_name, (w * song_name_position[0], 
+                                h - h * song_name_position[1]))
 
         # Render artist name
         artist_name = font_artist_name.render(sp.results['item']['artists'][0]['name'], 
                                               True, Colour)
         # Display artist name
-        screen.blit(artist_name, (w * ArtistNamePosition[0], 
-                                  h - h * ArtistNamePosition[1] + ResizedSongNameFontSize))
+        screen.blit(artist_name, (w * artist_name_position[0], 
+                                  h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
         # Display album art
         if (album_art != None) :
-            screen.blit(album_art, (w * AlbumArtPosition[0],
-                                    h - h * AlbumArtPosition[1]))
+            screen.blit(album_art, (w * album_art_position[0],
+                                    h - h * album_art_position[1]))
                     
     graphics_time = pygame.time.get_ticks()
     
     clock_time = pygame.time.get_ticks() - start_time
-    if timingDebug & (clock_time > 1000/FrameRate):
+    if timingDebug & (clock_time > 1000/frame_rate):
         print("WARN: Underperforming! update took: ", clock_time, "ms \n",
                 "Timings: \n events: ", event_time - start_time, 
                 "ms \n audio: ", audio_time - event_time, 
@@ -282,7 +289,7 @@ while running:
     pygame.display.flip()
 
     # Cap the frame rate
-    clock.tick(FrameRate)  # Lock the program to FPS
+    clock.tick(frame_rate)  # Lock the program to FPS
 
 
 #####################################
