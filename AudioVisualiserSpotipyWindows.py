@@ -6,6 +6,7 @@ import GifSprite
 import PyAudioWrapper
 import SpotipyWrapper
 import ctypes
+import random
 
 from PIL import Image
 
@@ -28,21 +29,22 @@ OriginalAppResolution = (960,540)
 #           Customisation           #
 #####################################
 # Cache folder size limit (in MB)
-cache_limit = 4
+cache_limit = 1
 
 # (With set defaults)
 Style = "Bars"                                # Style can be "Bars" for monstercat-esque, or "Smooth" for EQ like
 NumOfBars = 80                                # Adjust this value for more or less bars (log bins)
 smoothing_factor = 0.7                        # Adjust this value between 0 and 1 for more or less smoothing
 FrameRate = 60                                # Adjust this value 60+ for more updates and refreshes?
-Background = "assets/img/background1.gif"     # This sets the background image or GIF
+Background = None                             # This sets the background image or GIF
+BackgroundColour = (75,75,75)                 # Default Background colour
 BackgroundFPS = 36                            # Background FrameRate
 Colour = (255,255,255)                        # Sets the colour of the visualisation (RGB)
 VisualiserPosition = (0,0)                    # Position of the visualisation (x%, y%) move
 Size = (1,1)                                  # Size of visualisation (0 to 1) NOT WORKING YET (rect spawns wrong place use scale)
 NOFRAME = False                               # No border (window title bar)
 FULLSCREEN = False                            # Fullscreen
-BackgroundScale = "Fit"                       # UNIMPLEMENTED "Fill", "Fit", "Stretch", "Center", "Span" (some don't work lol)
+BackgroundScale = "Fit"                       # UNIMPLEMENTED "Fill", "Fit", "Stretch", "Center", "Span"
 BassPump = 0                                  # 0 to 1 for more bass shown
 
 ArtistNamePosition = (0.02,0.95)              # Position of the artist name (x%, y%) move
@@ -97,8 +99,16 @@ if sp.results != None:
 previous_log_fft_data = None
 # Program variables:
 running = True
-if Background != None:
-    background = GifSprite.GifSprite(Background, (0,0), fps=BackgroundFPS)
+# Pick a random background from folder
+try:
+    random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
+    print(random_background)
+    Background = GifSprite.GifSprite(random_background, (0,0), fps=BackgroundFPS)
+    Background.resize_frames(OriginalAppResolution[0] / Background.size[0],
+                             OriginalAppResolution[1] / Background.size[1])
+except Exception as e:
+    # print("Error:", e, "\n\n")
+    pass
 drawArrayLength = 0
 bass_reduction = 2
 while running:
@@ -129,13 +139,21 @@ while running:
             if sp.results != None:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
                 album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+            # Background
+            if Background != None:
+                Background.resize_frames(w / Background.size[0],
+                                h / Background.size[1])
 
     event_time = pygame.time.get_ticks()
 
     # AUDIO PROCESSING    
     # Read audio data
-    data = np.frombuffer(p.stream.read(CHUNK), dtype=np.int16)
-    fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
+    try:
+        data = np.frombuffer(p.stream.read(CHUNK), dtype=np.int16)
+        fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
+    except Exception as error:
+        # Hmm... I can't get here
+        print("An error occurred:", type(error).__name__) # An error occurred: NameError
 
     
     if Style == "Bars":
@@ -197,8 +215,11 @@ while running:
     # GRAPHICS PROCESSING
 
     # Background GIF
-    screen.blit(background.image, background.pos)
-    background.update()
+    if Background != None:
+        screen.blit(Background.image, Background.pos)
+        Background.update()
+    else:
+        screen.fill(BackgroundColour)
 
     # Album Art colouring
     # Colour avg

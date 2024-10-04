@@ -8,6 +8,7 @@ class GifSprite(pygame.sprite.Sprite):
         self.image = self._frames[0]
         self.rect = self.image.get_rect(topleft=pos)
         self.pos = pos
+        self.size = self._frames[0].get_size()
         self._frame_index = 0
         self._fps = fps
         self._clock = pygame.time.Clock()
@@ -36,6 +37,7 @@ class GifSprite(pygame.sprite.Sprite):
         self._frames = resized_frames
         self.image = self._frames[0]
         self.rect = self.image.get_rect(topleft=self.pos)
+        self.size = self._frames[0].get_size()
 
     def update(self):
         now = pygame.time.get_ticks()
