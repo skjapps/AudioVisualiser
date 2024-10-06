@@ -37,6 +37,7 @@ config.read('config.cfg')
 
 # Access the settings
 cache_limit = config.getint('Customisation', 'cache_limit')
+spotify_update_rate = config.getint('Customisation', 'spotify_update_rate')
 
 # Graphics Customisation
 style = config.get('Customisation', 'Style')
@@ -93,7 +94,7 @@ p = PyAudioWrapper.PyAudioWrapper(CHUNK)
 
 
 # Spotify #
-sp = SpotipyWrapper.SpotipyWrapper(pygame.time.get_ticks(), cache_limit)
+sp = SpotipyWrapper.SpotipyWrapper(pygame.time.get_ticks(), cache_limit, spotify_update_rate)
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)

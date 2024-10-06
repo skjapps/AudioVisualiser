@@ -13,11 +13,12 @@ from PIL import Image
 #              SPOTIPY              #
 #####################################
 class SpotipyWrapper():
-    def __init__(self, current_tick, cache_limit):
+    def __init__(self, current_tick, cache_limit, spotify_update_rate):
         # Setup
         self.avg_colour_album_art = [255,255,255]
         self.album_art_data = None
         self.cache_limit = cache_limit
+        self.spotify_update_rate = spotify_update_rate
         self._scope = "user-read-currently-playing" # Only need what user is listening to. 
         # The spotify api object
         self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope, 
@@ -39,7 +40,7 @@ class SpotipyWrapper():
         now = current_tick
         # 5000 ms = 5 seconds
         # Reduce api calls for now (IMPROVE WITH INTELLIGENT 429 error)
-        if now - self._sp_last_update > 5000:
+        if now - self._sp_last_update > (1000 * self.spotify_update_rate):
             # Reset timer
             self._sp_last_update = now
 
