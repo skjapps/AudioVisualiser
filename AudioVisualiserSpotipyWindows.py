@@ -119,6 +119,7 @@ except Exception as e:
     # print("Error:", e, "\n\n")
     pass
 drawArrayLength = 0
+spotifyPlaying = False
 while running:
     
     start_time = pygame.time.get_ticks()
@@ -192,6 +193,10 @@ while running:
     if sp.update(pygame.time.get_ticks()) & (sp.results != None):
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
         album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+        if sp.results['is_playing'] == True :
+            spotifyPlaying = True
+    else :
+        spotifyPlaying = False
 
     spotify_time = pygame.time.get_ticks()
 
@@ -214,7 +219,7 @@ while running:
              )
 
     # Draw bars
-    if max_value > 500 or sp.results['is_playing'] == True :
+    if max_value > 500 or spotifyPlaying:
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
