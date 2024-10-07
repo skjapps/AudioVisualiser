@@ -17,7 +17,7 @@ from PIL import Image
 #####################################
 #               Debug               #
 #####################################
-timingDebug = True
+timingDebug = False
 
 
 #####################################
@@ -119,7 +119,6 @@ except Exception as e:
     # print("Error:", e, "\n\n")
     pass
 drawArrayLength = 0
-bass_reduction = 2
 while running:
     
     start_time = pygame.time.get_ticks()
@@ -169,18 +168,14 @@ while running:
 
         log_fft_data = np.array([np.mean(fft_data[log_bins[i-1]:log_bins[i]]) for i in range(1, len(log_bins))])
 
-        bass_reduction = 1
-
     elif style == "Smooth":
         log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
         linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
         log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
 
-        bass_reduction = 2
-
     drawArrayLength = len(log_fft_data)
 
-    logarithmic_multiplier = np.log10(np.linspace(bass_reduction + 3*bass_pump, 10, len(log_fft_data)))
+    logarithmic_multiplier = np.log10(np.linspace(1 + 4*bass_pump, 10, len(log_fft_data)))
     log_fft_data *= logarithmic_multiplier
 
     max_value = np.max(log_fft_data)
@@ -219,7 +214,7 @@ while running:
              )
 
     # Draw bars
-    if max_value > 100:
+    if max_value > 500 or sp.results['is_playing'] == True :
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
