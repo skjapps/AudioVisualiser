@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=c:\Users\617216580\Documents\Python\AudioVisualiser1\.venv
+set VIRTUAL_ENV=c:\Users\Srikanth\Documents\VSCode\Python\AudioVisualiser\.venv
 
 if not defined PROMPT set PROMPT=$P$G
 
