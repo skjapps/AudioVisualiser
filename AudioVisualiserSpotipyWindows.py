@@ -17,12 +17,12 @@ from PIL import Image
 #####################################
 #               Debug               #
 #####################################
-timingDebug = False
+timingDebug = True
+
 
 #####################################
 #             Constants             #
 #####################################
-CHUNK = 1024
 OriginalAppResolution = (960,540)
 
 
@@ -36,6 +36,7 @@ config = configparser.ConfigParser()
 config.read('config.cfg')
 
 # Access the settings
+CHUNK = config.getint('Customisation', 'CHUNK')
 cache_limit = config.getint('Customisation', 'cache_limit')
 spotify_update_rate = config.getint('Customisation', 'spotify_update_rate')
 
@@ -155,58 +156,37 @@ while running:
     event_time = pygame.time.get_ticks()
 
     # AUDIO PROCESSING    
-    # Read audio data
     try:
         data = np.frombuffer(p.stream.read(CHUNK), dtype=np.int16)
         fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
     except Exception as error:
-        # Hmm... I can't get here
-        print("An error occurred:", type(error).__name__) # An error occurred: NameError
+        print("An error occurred:", type(error).__name__)
 
-    
     if style == "Bars":
-        # Reduced peaks
-        # Calculate logarithmic frequency bins (only once if they don't change)
         if 'log_bins' not in globals():
             log_bins = np.logspace(0, np.log10(CHUNK//2), num=num_of_bars, base=10.0, dtype=int)
-            log_bins = np.unique(log_bins)  # Remove duplicates
+            log_bins = np.unique(log_bins)
 
-        drawArrayLength = len(log_bins)
-        
-        # Map FFT data to logarithmic bins
-        log_fft_data = np.zeros(len(log_bins))
-        for i in range(1, len(log_bins)):
-            log_fft_data[i] = np.mean(fft_data[log_bins[i-1]:log_bins[i]])
-
-        bass_reduction = 2
-
-    if style == "Smooth" : 
-        # Define the logarithmic scale
-        log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
-
-        # Linear frequency bins
-        linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
-
-        # Interpolate the FFT data to the logarithmic scale
-        log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
-
-        drawArrayLength = len(log_fft_data)
+        log_fft_data = np.array([np.mean(fft_data[log_bins[i-1]:log_bins[i]]) for i in range(1, len(log_bins))])
 
         bass_reduction = 1
 
-    # Apply exponential multiplier to emphasize high frequencies
-    # Lower the "start" number in linspace, higher the bass reduction
-    logarithmic_multiplier = np.log10(np.linspace(bass_reduction, 10, len(log_fft_data)))
+    elif style == "Smooth":
+        log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
+        linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
+        log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
+
+        bass_reduction = 2
+
+    drawArrayLength = len(log_fft_data)
+
+    logarithmic_multiplier = np.log10(np.linspace(bass_reduction + 3*bass_pump, 10, len(log_fft_data)))
     log_fft_data *= logarithmic_multiplier
 
-    # Normalize the FFT data
     max_value = np.max(log_fft_data)
-
-    # Make sure values hit minimum of 40% volume
     if max_value > 0:
         log_fft_data = log_fft_data / (max_value * 0.8)
 
-    # Apply smoothing
     if previous_log_fft_data is not None:
         log_fft_data = smoothing_factor * previous_log_fft_data + (1 - smoothing_factor) * log_fft_data
     previous_log_fft_data = log_fft_data
