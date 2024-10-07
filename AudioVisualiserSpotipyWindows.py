@@ -61,6 +61,7 @@ artist_name_position = tuple(map(float, config.get('Customisation', 'ArtistNameP
 artist_name_font_size = config.getint('Customisation', 'ArtistNameFontSize')
 song_name_position = tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))
 song_name_font_size = config.getint('Customisation', 'SongNameFontSize')
+song_name_short = config.getboolean('Customisation', 'ShortSongName')
 album_art_position = tuple(map(float, config.get('Customisation', 'AlbumArtPosition').split(',')))
 album_art_size = config.getfloat('Customisation', 'AlbumArtSize')
 album_art_colouring = config.getboolean('Customisation', 'AlbumArtColouring')

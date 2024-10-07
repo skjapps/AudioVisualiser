@@ -1,4 +1,17 @@
-Useful Links (the tabs i have open)
+# To Do:
+## Minor Fixes:
+- Make sure when songs are playing, it is showing the visualiser, house style songs do not work properly, sometimes cutting out when there is silence.
+- The stretching of window ruins the resolution of the image, mildly intentional, pixelated backgrounds run faster...
+- Font selector maybe
+## Big changes
+- WindowsRT in WIP will allow any media titles and names to be recognised, allow both spotify and windows modes
+- MacOS and Linux support somehow (WASAPI is the best loopback)
+- Performance needs improvement. Threading spotify data collection and graphics could help.
+- ...
+
+This maybe the last time i commit (sad) it works well enough, good luck !
+
+# Useful Links (the tabs i have open)
 https://www.desmos.com/calculator
 
 Could this work better...? fft that takes samples logarithmically than linearly
@@ -21,3 +34,4 @@ https://stackoverflow.com/questions/5627425/what-is-a-good-way-to-handle-excepti
 
 Windows currently playing:
 https://stackoverflow.com/questions/65011660/how-can-i-get-the-title-of-the-currently-playing-media-in-windows-10-with-python
+
