@@ -1,6 +1,6 @@
 # To Do:
 ## Minor Fixes:
-- Make sure when songs are playing, it is showing the visualiser, house style songs do not work properly, sometimes cutting out when there is silence.
+- ~~Make sure when songs are playing, it is showing the visualiser, house style songs do not work properly, sometimes cutting out when there is silence.~~ Changed to max value = 20, still to improve song playing detection...
 - The stretching of window ruins the resolution of the image, mildly intentional, pixelated backgrounds run faster...
 - Font selector maybe
 ## Big changes
@@ -9,7 +9,7 @@
 - Performance needs improvement. Threading spotify data collection and graphics could help.
 - ...
 
-This maybe the last time i commit (sad) it works well enough, good luck !
+~~This maybe the last time i commit (sad) it works well enough, good luck !~~ I just love this project too much i will keep going...
 
 # Useful Links (the tabs i have open)
 https://www.desmos.com/calculator

@@ -230,7 +230,7 @@ while running:
              )
 
     # Draw bars
-    if max_value > 100 or spotifyPlaying:
+    if max_value > 20 or spotifyPlaying:
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
