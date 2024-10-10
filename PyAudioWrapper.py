@@ -1,4 +1,5 @@
 import pyaudiowpatch as pyaudio
+import numpy as np
 
 #####################################
 #           PyAudioWPatch           #
@@ -31,3 +32,13 @@ class PyAudioWrapper():
                                     frames_per_buffer=self._chunk,
                                     input=True,
                                     input_device_index=default_speakers["index"])
+
+
+    def read_mono(self):
+        # Read data from the stream
+        data = self.stream.read(self._chunk)
+        # Convert data to numpy array
+        audio_data = np.frombuffer(data, dtype=np.int16)
+        # Select every alternate value starting from index 0 (left channel)
+        mono_data = audio_data[::2]
+        return mono_data

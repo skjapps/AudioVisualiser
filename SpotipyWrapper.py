@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import shutil
 import os
+import threading
 
 from PIL import Image
 
@@ -26,6 +27,8 @@ class SpotipyWrapper():
                                                     client_secret="1c2d3272146545f7a25d0657884c65fe",
                                                     redirect_uri="http://localhost:8080"))
         self._sp_last_update = current_tick
+        self._lock = threading.Lock()
+
 
         # Make cache folders
         if not os.path.exists('cache/'):
@@ -44,7 +47,8 @@ class SpotipyWrapper():
             # Reset timer
             self._sp_last_update = now
 
-            self.get_data()
+            # Start a new thread to get data
+            threading.Thread(target=self.get_data).start()
 
             return True
         

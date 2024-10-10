@@ -17,7 +17,7 @@ from PIL import Image
 #####################################
 #               Debug               #
 #####################################
-timingDebug = False
+timingDebug = True
 
 
 #####################################
@@ -45,7 +45,6 @@ style = config.get('Customisation', 'Style')
 num_of_bars = config.getint('Customisation', 'NumOfBars')
 smoothing_factor = config.getfloat('Customisation', 'smoothing_factor')
 frame_rate = config.getint('Customisation', 'FrameRate')
-background = config.get('Customisation', 'Background')
 background_colour = tuple(map(int, config.get('Customisation', 'BackgroundColour').split(',')))
 background_fps = config.getint('Customisation', 'BackgroundFPS')
 colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
@@ -113,12 +112,12 @@ running = True
 try:
     random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
     print(random_background)
-    Background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
-    Background.resize_frames(OriginalAppResolution[0] / Background.size[0],
-                             OriginalAppResolution[1] / Background.size[1])
+    background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
+    background.resize_frames(OriginalAppResolution[0] / background.size[0],
+                             OriginalAppResolution[1] / background.size[1])
 except Exception as e:
     # print("Error:", e, "\n\n")
-    pass
+    background = None
 drawArrayLength = 0
 spotifyPlaying = False
 while running:
@@ -150,18 +149,20 @@ while running:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
                 album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
             # Background
-            if Background != None:
-                Background.resize_frames(w / Background.size[0],
-                                h / Background.size[1])
+            if background != None:
+                background.resize_frames(w / background.size[0],
+                                h / background.size[1])
 
     event_time = pygame.time.get_ticks()
 
-    # AUDIO PROCESSING    
+    # AUDIO PROCESSING
     try:
-        data = np.frombuffer(p.stream.read(CHUNK), dtype=np.int16)
+        data = p.read_mono()
         fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
     except Exception as error:
         print("An error occurred:", type(error).__name__)
+
+    audio_time_fft = pygame.time.get_ticks()
 
     if style == "Bars":
         if 'log_bins' not in globals():
@@ -204,11 +205,13 @@ while running:
     # GRAPHICS PROCESSING
 
     # Background GIF
-    if Background != None:
-        screen.blit(Background.image, Background.pos)
-        Background.update()
+    if background != None:
+        screen.blit(background.image, background.pos)
+        background.update()
     else:
         screen.fill(background_colour)
+
+    graphics_time_background = pygame.time.get_ticks()
 
     # Album Art colouring
     # Colour avg
@@ -234,6 +237,8 @@ while running:
                             h - bar_height + (-visualiser_position[1] * h), 
                             bar_width * visualiser_size[0], 
                             bar_height * visualiser_size[1]))
+            
+    graphics_time_bars = pygame.time.get_ticks()
             
     # Render Spotify Data
     if sp.results != None :
@@ -262,9 +267,12 @@ while running:
     if timingDebug & (clock_time > 1000/frame_rate):
         print("WARN: Underperforming! update took: ", clock_time, "ms \n",
                 "Timings: \n events: ", event_time - start_time, 
-                "ms \n audio: ", audio_time - event_time, 
+                "ms \n audio fft: ", audio_time_fft - event_time,
+                "ms \n audio processing: ", audio_time - audio_time_fft, 
                 "ms \n spotify: ", spotify_time - audio_time, 
-                "ms \n graphics: ", graphics_time - spotify_time, 
+                "ms \n graphics background: ", graphics_time_background - spotify_time,
+                "ms \n graphics bars: ", graphics_time_bars - graphics_time_background,
+                "ms \n graphics spotify: ", graphics_time - graphics_time_bars, 
                 "ms \n")
 
     # Update display

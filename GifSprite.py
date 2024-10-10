@@ -24,6 +24,8 @@ class GifSprite(pygame.sprite.Sprite):
             pygame_image = pygame.image.fromstring(
                 frame_rgba.tobytes(), frame_rgba.size, frame_rgba.mode
             )
+            # Convert the surface to the display format
+            pygame_image = pygame_image.convert_alpha()
             ret.append(pygame_image)
         return ret
     
