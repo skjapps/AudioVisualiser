@@ -6,9 +6,10 @@ A Python (PyGame) based Graphical Audio spectrum visualiser for Windows with Spo
 - PyAudioWPatch: Using Windows WASAPI audio capture to loopback and record audio device
 - Pygame: All the graphics for the app
 - Numpy: FFT, Audio processing and colour recognition, etc.
+
 (All packages required are listed in requirements.)
 
 ## Build: 
-Using PyInstaller (also in the venv), probably something like:
+Using PyInstaller, probably something like:
 `PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser .\AudioVisualiserSpotipyWindows.py`
 Feel free to use whatever settings, it should always work.

@@ -3,11 +3,13 @@
 - ~~Make sure when songs are playing, it is showing the visualiser, house style songs do not work properly, sometimes cutting out when there is silence.~~ Changed to max value = 20, still to improve song playing detection...
 - The stretching of window ruins the resolution of the image, mildly intentional, pixelated backgrounds run faster...
 - Font selector maybe
+- .spec build not working, i dunno how it works but idc.
 ## Big changes
 - WindowsRT in WIP will allow any media titles and names to be recognised, allow both spotify and windows modes
 - MacOS and Linux support somehow (WASAPI is the best loopback)
 - Performance needs improvement. Threading spotify data collection and graphics could help.
 - ...
+
 
 ~~This maybe the last time i commit (sad) it works well enough, good luck !~~ I just love this project too much i will keep going...
 

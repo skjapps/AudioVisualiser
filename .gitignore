@@ -5,6 +5,10 @@ venv/
 cache/
 .cache
 
+# Ignore PyInstaller Builds
+build/
+dist/
+
 # Ignore all files in the assets/img/ directory
 assets/img/*
 

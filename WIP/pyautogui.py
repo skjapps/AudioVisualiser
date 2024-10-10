@@ -1,4 +1,4 @@
-import pyautogui
+import WIP.pyautogui as pyautogui
 import random
 import time
 import string
