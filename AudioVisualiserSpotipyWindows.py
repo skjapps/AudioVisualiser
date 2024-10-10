@@ -2,12 +2,14 @@ import numpy as np
 import pygame
 import io
 import os
-import GifSprite
-import PyAudioWrapper
-import SpotipyWrapper
 import ctypes
 import random
 import configparser
+
+import GifSprite
+from PyAudioWrapper import PyAudioWrapper
+from SpotipyWrapper import SpotipyWrapper
+from FFTProcessor import FFTProcessor
 
 from PIL import Image
 
@@ -17,7 +19,7 @@ from PIL import Image
 #####################################
 #               Debug               #
 #####################################
-timingDebug = True
+timingDebug = False
 
 
 #####################################
@@ -37,6 +39,7 @@ config.read('config.cfg')
 
 # Access the settings
 CHUNK = config.getint('Customisation', 'CHUNK')
+fft_update_rate = config.getfloat('Customisation', 'fft_update_rate')
 cache_limit = config.getint('Customisation', 'cache_limit')
 spotify_update_rate = config.getint('Customisation', 'spotify_update_rate')
 
@@ -91,11 +94,13 @@ font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 album_art = None
 
 # Initialize PyAudio Object
-p = PyAudioWrapper.PyAudioWrapper(CHUNK)
+p = PyAudioWrapper(CHUNK)
 
+# Initialise FFTProcessor
+# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate)
 
 # Spotify #
-sp = SpotipyWrapper.SpotipyWrapper(pygame.time.get_ticks(), cache_limit, spotify_update_rate)
+sp = SpotipyWrapper(pygame.time.get_ticks(), cache_limit, spotify_update_rate)
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
@@ -159,6 +164,8 @@ while running:
     try:
         data = p.read_mono()
         fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
+        # fft_processor.update_data(data)
+        # fft_data = np.abs(fft_processor.get_smoothed_fft_result())
     except Exception as error:
         print("An error occurred:", type(error).__name__)
 
@@ -223,7 +230,7 @@ while running:
              )
 
     # Draw bars
-    if max_value > 500 or spotifyPlaying:
+    if max_value > 100 or spotifyPlaying:
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
