@@ -5,10 +5,13 @@ import os
 import ctypes
 import random
 import configparser
+import cProfile
+import pstats
+import librosa
 
 import GifSprite
 from PyAudioWrapper import PyAudioWrapper
-from SpotipyWrapper import SpotipyWrapper
+from MediaInfoWrapper import MediaInfoWrapper
 from FFTProcessor import FFTProcessor
 
 from PIL import Image
@@ -20,6 +23,11 @@ from PIL import Image
 #               Debug               #
 #####################################
 timingDebug = False
+performanceDebug = True
+
+profiler = cProfile.Profile()
+if performanceDebug:
+    profiler.enable()
 
 
 #####################################
@@ -41,13 +49,15 @@ config.read('config.cfg')
 CHUNK = config.getint('Customisation', 'CHUNK')
 fft_update_rate = config.getfloat('Customisation', 'fft_update_rate')
 cache_limit = config.getint('Customisation', 'cache_limit')
-spotify_update_rate = config.getint('Customisation', 'spotify_update_rate')
+media_mode = config.get('Customisation', 'media_mode')
+media_update_rate = config.getint('Customisation', 'media_update_rate')
 
 # Graphics Customisation
 style = config.get('Customisation', 'Style')
 num_of_bars = config.getint('Customisation', 'NumOfBars')
 smoothing_factor = config.getfloat('Customisation', 'smoothing_factor')
 frame_rate = config.getint('Customisation', 'FrameRate')
+background_style = config.get('Customisation', 'BackgroundStyle')
 background_colour = tuple(map(int, config.get('Customisation', 'BackgroundColour').split(',')))
 background_fps = config.getint('Customisation', 'BackgroundFPS')
 colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
@@ -97,10 +107,10 @@ album_art = None
 p = PyAudioWrapper(CHUNK)
 
 # Initialise FFTProcessor
-# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate)
+# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream)
 
 # Spotify #
-sp = SpotipyWrapper(pygame.time.get_ticks(), cache_limit, spotify_update_rate)
+sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_update_rate)
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
@@ -116,7 +126,7 @@ running = True
 # Pick a random background from folder
 try:
     random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
-    print(random_background)
+    # print(random_background)
     background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
     background.resize_frames(OriginalAppResolution[0] / background.size[0],
                              OriginalAppResolution[1] / background.size[1])
@@ -124,7 +134,6 @@ except Exception as e:
     # print("Error:", e, "\n\n")
     background = None
 drawArrayLength = 0
-spotifyPlaying = False
 while running:
     
     start_time = pygame.time.get_ticks()
@@ -164,10 +173,9 @@ while running:
     try:
         data = p.read_mono()
         fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
-        # fft_processor.update_data(data)
         # fft_data = np.abs(fft_processor.get_smoothed_fft_result())
     except Exception as error:
-        print("An error occurred:", type(error).__name__)
+        print("An error occurred:", error)
 
     audio_time_fft = pygame.time.get_ticks()
 
@@ -199,13 +207,10 @@ while running:
     audio_time = pygame.time.get_ticks()
 
     # SPOTIFY PROCESSING
-    if sp.update(pygame.time.get_ticks()) & (sp.results != None):
+    if sp.updated & (sp.results != None):
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
         album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-        if sp.results['is_playing'] == True :
-            spotifyPlaying = True
-    else :
-        spotifyPlaying = False
+        sp.updated = False
 
     spotify_time = pygame.time.get_ticks()
 
@@ -230,7 +235,8 @@ while running:
              )
 
     # Draw bars
-    if max_value > 20 or spotifyPlaying:
+    print(sp.isPlaying)
+    if max_value > 30 or sp.isPlaying:
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
@@ -250,14 +256,14 @@ while running:
     # Render Spotify Data
     if sp.results != None :
         # Render song name
-        song_name = font_song_name.render(sp.results['item']['name'], 
+        song_name = font_song_name.render(sp.song_name, 
                                           True, Colour)
         # Display song name
         screen.blit(song_name, (w * song_name_position[0], 
                                 h - h * song_name_position[1]))
 
         # Render artist name
-        artist_name = font_artist_name.render(sp.results['item']['artists'][0]['name'], 
+        artist_name = font_artist_name.render(sp.artist_name, 
                                               True, Colour)
         # Display artist name
         screen.blit(artist_name, (w * artist_name_position[0], 
@@ -293,8 +299,19 @@ while running:
 #                Exit               #
 #####################################
 # Clean up
+# Stop the FFTProcessor thread
+# fft_processor.stop()
+
 # Audio
 p.stream.stop_stream()
 p.stream.close()
 # Graphics
 pygame.quit()
+
+# Get performance Stats
+if performanceDebug:
+    profiler.disable()
+    with open('profiling_stats.txt', 'w') as f:
+        stats = pstats.Stats(profiler, stream=f)
+        stats.sort_stats(pstats.SortKey.TIME)
+        stats.print_stats()
