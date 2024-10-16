@@ -6,6 +6,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import shutil
 import os
 import threading
+import json
 
 from PIL import Image
 
@@ -20,11 +21,15 @@ class SpotipyWrapper():
         self.album_art_data = None
         self.cache_limit = cache_limit
         self.spotify_update_rate = spotify_update_rate
-        self._scope = "user-read-currently-playing" # Only need what user is listening to. 
+        self._scope = "user-read-currently-playing" # Only need what user is listening to.
+        with open('spotify_api.json') as config_file:
+            config = json.load(config_file)
+            self._client_id = config['client_id']
+            self._client_secret = config['client_secret']
         # The spotify api object
-        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope, 
-                                                    client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
-                                                    client_secret="1c2d3272146545f7a25d0657884c65fe",
+        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
+                                                    client_id=self._client_id, 
+                                                    client_secret=self._client_secret,
                                                     redirect_uri="http://localhost:8080"))
         self._sp_last_update = current_tick
         self._lock = threading.Lock()
@@ -58,8 +63,9 @@ class SpotipyWrapper():
     def get_data(self):
         try:
             self.results = self.sp.currently_playing()
-            # Cache Album Art
-            self.CacheAlbumArt()
+            # Cache Images
+            # cache album art
+            self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'])            
         except:
             self.results = None
         
@@ -68,7 +74,7 @@ class SpotipyWrapper():
 
     # Cache Album Art
     # Also saves the average colour of the current album art to "Colour"
-    def CacheAlbumArt(self):
+    def CacheImage(self, url):
         # Clear Cache above certain size
         if (self.get_folder_size('cache/') >= (self.cache_limit * 2 ** 20)):
             # Remove the folder and its contents
@@ -80,14 +86,13 @@ class SpotipyWrapper():
                 os.makedirs('cache/img')
 
         # Find the url
-        url = self.results['item']['album']['images'][0]['url']
         filename = 'cache/img/' + url.split('/')[-1] + '.jpg'
         
         # Load image data and save if needed
         try:
-            self.album_art_data = open(filename, 'rb').read()
+            ret = open(filename, 'rb').read()
         except FileNotFoundError:
-            self.album_art_data = requests.get(self.results['item']['album']['images'][0]['url']).content
+            ret = requests.get(self.results['item']['album']['images'][0]['url']).content
             with open(filename, 'wb') as handler:
                 handler.write(self.album_art_data)
 
@@ -102,6 +107,8 @@ class SpotipyWrapper():
         # Check if the result is a single number (greyscale or single channel...)
         if np.isscalar(self.avg_colour_album_art):
             self.avg_colour_album_art = np.array([self.avg_colour_album_art] * 3)
+
+        return ret
         
 
     # From https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python

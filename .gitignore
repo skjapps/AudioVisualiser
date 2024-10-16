@@ -12,6 +12,9 @@ dist/
 # Ignore all files in the assets/img/ directory
 assets/img/*
 
+# Hide Api Keys
+spotify_api.json
+
 # But do not ignore the directory itself
 !assets/img/
 

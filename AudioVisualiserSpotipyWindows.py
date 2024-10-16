@@ -104,7 +104,7 @@ sp = SpotipyWrapper(pygame.time.get_ticks(), cache_limit, spotify_update_rate)
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-
+    spotifyPlaying = sp.results['is_playing']
 
 #####################################
 #             Main loop             #
@@ -202,10 +202,7 @@ while running:
     if sp.update(pygame.time.get_ticks()) & (sp.results != None):
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
         album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-        if sp.results['is_playing'] == True :
-            spotifyPlaying = True
-    else :
-        spotifyPlaying = False
+        spotifyPlaying = sp.results['is_playing']
 
     spotify_time = pygame.time.get_ticks()
 
@@ -230,7 +227,7 @@ while running:
              )
 
     # Draw bars
-    if max_value > 20 or spotifyPlaying:
+    if spotifyPlaying or (max_value > 30) :
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
