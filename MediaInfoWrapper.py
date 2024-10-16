@@ -7,6 +7,7 @@ import shutil
 import os
 import threading
 import asyncio
+import json
 
 from PIL import Image
 
@@ -36,12 +37,15 @@ class MediaInfoWrapper():
 
         # spotify related
         self._scope = "user-read-currently-playing" # Only need what user is listening to. 
+        with open('spotify_api.json') as config_file:
+            config = json.load(config_file)
+            self._client_id = config['client_id']
+            self._client_secret = config['client_secret']
         # The spotify api object
-        if mode == "Spotify" :
-            self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope, 
-                                                        client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
-                                                        client_secret="1c2d3272146545f7a25d0657884c65fe",
-                                                        redirect_uri="http://localhost:8080"))
+        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
+                                                    client_id=self._client_id, 
+                                                    client_secret=self._client_secret,
+                                                    redirect_uri="http://localhost:8080"))
             
         # private, setup
         self._sp_last_update = current_tick
@@ -75,8 +79,8 @@ class MediaInfoWrapper():
                 # Set media related info
                 self.song_name = self.results['item']['name']
                 self.artist_name = self.results['item']['artists'][0]['name']
-                # self.isPlaying = eval(self.results['is_playing'])
-                print(eval(self.results['is_playing']))
+                print(self.results['is_playing'])
+                self.isPlaying = self.results['is_playing']
                 # Cache Album Art
                 self.CacheAlbumArt()
                 # print(self.results)

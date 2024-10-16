@@ -7,7 +7,6 @@ import random
 import configparser
 import cProfile
 import pstats
-import librosa
 
 import GifSprite
 from PyAudioWrapper import PyAudioWrapper
@@ -23,7 +22,7 @@ from PIL import Image
 #               Debug               #
 #####################################
 timingDebug = False
-performanceDebug = True
+performanceDebug = False
 
 profiler = cProfile.Profile()
 if performanceDebug:
@@ -114,6 +113,7 @@ sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_up
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+    sp.updated = False
 
 
 #####################################
@@ -126,7 +126,6 @@ running = True
 # Pick a random background from folder
 try:
     random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
-    # print(random_background)
     background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
     background.resize_frames(OriginalAppResolution[0] / background.size[0],
                              OriginalAppResolution[1] / background.size[1])
@@ -235,8 +234,7 @@ while running:
              )
 
     # Draw bars
-    print(sp.isPlaying)
-    if max_value > 30 or sp.isPlaying:
+    if sp.isPlaying or (max_value > 30) :
         bar_width = w // drawArrayLength
         for i in range(1, drawArrayLength):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
