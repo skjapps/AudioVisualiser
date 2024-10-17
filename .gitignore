@@ -8,6 +8,7 @@ cache/
 # Ignore PyInstaller Builds
 build/
 dist/
+*.spec
 
 # Ignore profiling debug
 profiling_stats.txt

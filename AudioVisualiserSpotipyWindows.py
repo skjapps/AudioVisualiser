@@ -12,6 +12,7 @@ import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
 from FFTProcessor import FFTProcessor
+from ImageFlipper import ImageFlipper
 
 from PIL import Image
 
@@ -22,7 +23,7 @@ from PIL import Image
 #               Debug               #
 #####################################
 timingDebug = False
-performanceDebug = False
+performanceDebug = True
 
 profiler = cProfile.Profile()
 if performanceDebug:
@@ -101,19 +102,25 @@ font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 
 # To initialise variables
 album_art = None
+artist_image = None
 
 # Initialize PyAudio Object
 p = PyAudioWrapper(CHUNK)
 
 # Initialise FFTProcessor
-# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream)
+# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream, sample_rate=p.default_speakers["defaultSampleRate"])
 
 # Spotify #
 sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_update_rate)
 if sp.results != None:
     album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
     album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+    artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+    artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
     sp.updated = False
+
+# Create an ImageFlipper instance
+# flipper = ImageFlipper(album_art, artist_image, flip_interval=5000, flip_duration=1000)
 
 
 #####################################
@@ -161,6 +168,9 @@ while running:
             if sp.results != None:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
                 album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+                artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
+                # flipper.change_images(album_art, artist_image)
             # Background
             if background != None:
                 background.resize_frames(w / background.size[0],
@@ -206,9 +216,13 @@ while running:
     audio_time = pygame.time.get_ticks()
 
     # SPOTIFY PROCESSING
+    sp.update(pygame.time.get_ticks())
     if sp.updated & (sp.results != None):
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
         album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+        artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
+        # flipper.change_images(album_art, artist_image)
         sp.updated = False
 
     spotify_time = pygame.time.get_ticks()
@@ -268,7 +282,14 @@ while running:
                                   h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
         # Display album art
+        # if (album_art != None) or (artist_image != None) :
         if (album_art != None) :
+            # Update the flipper
+            # flipper.update()
+
+            # Draw the current image
+            # flipper.draw(screen, (w * album_art_position[0],
+            #                         h - h * album_art_position[1]))
             screen.blit(album_art, (w * album_art_position[0],
                                     h - h * album_art_position[1]))
                     

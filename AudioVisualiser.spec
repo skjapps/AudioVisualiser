@@ -5,7 +5,7 @@ a = Analysis(
     ['AudioVisualiserSpotipyWindows.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets/ico/ico.png', 'assets/ico/icon.png')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -36,16 +36,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['assets\\ico\\ico.png'],
-    onefile=True  # Set onefile to True
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='AudioVisualiser'
 )

@@ -26,6 +26,7 @@ class MediaInfoWrapper():
         self.mode = mode
         self.avg_colour_album_art = [255,255,255]
         self.album_art_data = None
+        self.artist_image_data = None
         self.cache_limit = cache_limit
         self.media_update_rate = media_update_rate
 
@@ -37,14 +38,14 @@ class MediaInfoWrapper():
 
         # spotify related
         self._scope = "user-read-currently-playing" # Only need what user is listening to. 
-        with open('spotify_api.json') as config_file:
-            config = json.load(config_file)
-            self._client_id = config['client_id']
-            self._client_secret = config['client_secret']
+        # with open('spotify_api.json') as config_file:
+        #     config = json.load(config_file)
+        #     self._client_id = config['client_id']
+        #     self._client_secret = config['client_secret']
         # The spotify api object
         self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
-                                                    client_id=self._client_id, 
-                                                    client_secret=self._client_secret,
+                                                    client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
+                                                    client_secret="ec4c90f7bbcb4ff8a8b6763d4c505f60",
                                                     redirect_uri="http://localhost:8080"))
             
         # private, setup
@@ -79,10 +80,12 @@ class MediaInfoWrapper():
                 # Set media related info
                 self.song_name = self.results['item']['name']
                 self.artist_name = self.results['item']['artists'][0]['name']
-                print(self.results['is_playing'])
+                # print(self.results['is_playing'])
                 self.isPlaying = self.results['is_playing']
                 # Cache Album Art
-                self.CacheAlbumArt()
+                self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
+                self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
                 # print(self.results)
             # elif self.mode == "winsdk" :
             #     # Not caching windows album art data, no need.
@@ -155,7 +158,8 @@ class MediaInfoWrapper():
 
     # Cache Album Art
     # Also saves the average colour of the current album art to "Colour"
-    def CacheAlbumArt(self):
+    # get_colour either true or false
+    def CacheImage(self, url, get_colour):
         # Clear Cache above certain size
         if (self.get_folder_size('cache/') >= (self.cache_limit * 2 ** 20)):
             # Remove the folder and its contents
@@ -167,18 +171,21 @@ class MediaInfoWrapper():
                 os.makedirs('cache/img')
 
         # Find the url
-        url = self.results['item']['album']['images'][0]['url']
         filename = 'cache/img/' + url.split('/')[-1] + '.jpg'
         
         # Load image data and save if needed
         try:
-            self.album_art_data = open(filename, 'rb').read()
+            ret = open(filename, 'rb').read()
         except FileNotFoundError:
-            self.album_art_data = requests.get(self.results['item']['album']['images'][0]['url']).content
+            ret = requests.get(url).content
             with open(filename, 'wb') as handler:
-                handler.write(self.album_art_data)
+                handler.write(ret)
 
-        self.get_avg_img_colour(filename)
+        # Average image colour 
+        if get_colour:
+            self.get_avg_img_colour(filename)
+
+        return ret
 
     def get_avg_img_colour(self, filename):
         # Average image colour 
