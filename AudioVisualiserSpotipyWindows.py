@@ -120,7 +120,7 @@ if sp.results != None:
     sp.updated = False
 
 # Create an ImageFlipper instance
-# flipper = ImageFlipper(album_art, artist_image, flip_interval=5000, flip_duration=1000)
+flipper = ImageFlipper(album_art, artist_image, flip_interval=5000, flip_duration=1000)
 
 
 #####################################
@@ -170,7 +170,7 @@ while running:
                 album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
                 artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
                 artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
-                # flipper.change_images(album_art, artist_image)
+                flipper.change_images(album_art, artist_image)
             # Background
             if background != None:
                 background.resize_frames(w / background.size[0],
@@ -282,16 +282,15 @@ while running:
                                   h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
         # Display album art
-        # if (album_art != None) or (artist_image != None) :
-        if (album_art != None) :
-            # Update the flipper
-            # flipper.update()
+        if (album_art != None) or (artist_image != None) :
+        # Update the flipper
+            flipper.update()
 
             # Draw the current image
-            # flipper.draw(screen, (w * album_art_position[0],
-            #                         h - h * album_art_position[1]))
-            screen.blit(album_art, (w * album_art_position[0],
+            flipper.draw(screen, (w * album_art_position[0],
                                     h - h * album_art_position[1]))
+            # screen.blit(album_art, (w * album_art_position[0],
+            #                         h - h * album_art_position[1]))
                     
     graphics_time = pygame.time.get_ticks()
     
