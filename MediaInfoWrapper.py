@@ -24,6 +24,7 @@ class MediaInfoWrapper():
     def __init__(self, mode, current_tick, cache_limit, media_update_rate):
         # Setup
         self.mode = mode
+        self.results = None
         self.avg_colour_album_art = [255,255,255]
         self.album_art_data = None
         self.artist_image_data = None

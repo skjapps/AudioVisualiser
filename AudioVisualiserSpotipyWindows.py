@@ -222,7 +222,7 @@ while running:
         album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
         artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
         artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
-        # flipper.change_images(album_art, artist_image)
+        flipper.change_images(album_art, artist_image)
         sp.updated = False
 
     spotify_time = pygame.time.get_ticks()
