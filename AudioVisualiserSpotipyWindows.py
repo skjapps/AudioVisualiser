@@ -77,7 +77,9 @@ song_name_short = config.getboolean('Customisation', 'ShortSongName')
 album_art_position = tuple(map(float, config.get('Customisation', 'AlbumArtPosition').split(',')))
 album_art_size = config.getfloat('Customisation', 'AlbumArtSize')
 album_art_colouring = config.getboolean('Customisation', 'AlbumArtColouring')
-album_art_colour_vibrancy = config.getfloat('Customisation', 'AlbumArtColourVibrancy')                     
+album_art_colour_vibrancy = config.getfloat('Customisation', 'AlbumArtColourVibrancy')
+album_art_flip_interval = config.getfloat('Customisation', 'AlbumArtFlipInterval')
+album_art_flip_duration = config.getfloat('Customisation', 'AlbumArtFlipDuration')              
 
 ResizedArtistNameFontSize = config.getint('Customisation', 'ArtistNameFontSize')
 ResizedSongNameFontSize = config.getint('Customisation', 'SongNameFontSize')
@@ -90,11 +92,13 @@ ResizedAlbumArtSize = 0.3
 if os.name == 'nt' :
     ctypes.windll.user32.SetProcessDPIAware()
 # Initialize Pygame
+# Set these first so it shows correctly
+pygame.display.set_caption("Audio Visualiser")
+pygame.display.set_icon(pygame.image.load('assets/ico/ico.png'))
+# Init pygame graphics engine
 pygame.init()
 screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)), vsync=1)
 w, h = pygame.display.get_surface().get_size()
-pygame.display.set_caption("Audio Visualiser")
-pygame.display.set_icon(pygame.image.load('assets/ico/ico.png'))
 clock = pygame.time.Clock()
 # Fonts setup
 font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
@@ -120,7 +124,7 @@ if sp.results != None:
     sp.updated = False
 
 # Create an ImageFlipper instance
-flipper = ImageFlipper(album_art, artist_image, flip_interval=5000, flip_duration=1000)
+flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
 
 
 #####################################
@@ -130,6 +134,7 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=5000, flip_duratio
 previous_log_fft_data = None
 # Program variables:
 running = True
+scalar = 0 # colour scaling
 # Pick a random background from folder
 try:
     random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
@@ -240,11 +245,11 @@ while running:
 
     # Album Art colouring
     # Colour avg
-    scalar = 255 - max(sp.avg_colour_album_art)
+    scalar = 255 - max(sp.vibrant_colour_album_art)
     Colour = (
-                sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
-                sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy, 
-                sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
+                sp.vibrant_colour_album_art[0] + scalar * album_art_colour_vibrancy,
+                sp.vibrant_colour_album_art[1] + scalar * album_art_colour_vibrancy, 
+                sp.vibrant_colour_album_art[2] + scalar * album_art_colour_vibrancy
              )
 
     # Draw bars
@@ -254,9 +259,12 @@ while running:
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
             log_fft_data[i] = min(log_fft_data[i], 1)
             pygame.draw.rect(screen, (
-                                        (Colour[0] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
-                                        (Colour[1] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
-                                        (Colour[2] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125),
+                                        (Colour[0] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50), 
+                                        (Colour[1] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50), 
+                                        (Colour[2] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50),
+                                        # (Colour[0] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
+                                        # (Colour[1] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
+                                        # (Colour[2] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125),
                                     ), 
                             (i * bar_width + (visualiser_position[0] * w), 
                             h - bar_height + (-visualiser_position[1] * h), 
