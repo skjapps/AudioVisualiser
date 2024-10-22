@@ -13,6 +13,8 @@ class PyAudioWrapper():
         wasapi_info = self._p.get_host_api_info_by_type(pyaudio.paWASAPI)
         # Get default WASAPI speakers
         self.default_speakers = self._p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
+        # Whenever new data is available
+        # self.updated = False
 
         # Getting loopback solution
         if not self.default_speakers["isLoopbackDevice"]:
@@ -31,14 +33,13 @@ class PyAudioWrapper():
                                     rate=int(self.default_speakers["defaultSampleRate"]),
                                     frames_per_buffer=self._chunk,
                                     input=True,
-                                    input_device_index=self.default_speakers["index"])
+                                    input_device_index=self.default_speakers["index"],
+                                    stream_callback=self.read_mono)
 
     # Also in The FFTProcesssor but will be depreciated...
-    def read_mono(self):
-        # Read data from the stream
-        data = self.stream.read(self._chunk)
+    def read_mono(self, in_data, frame_count, time_info, status):
         # Convert data to numpy array
-        audio_data = np.frombuffer(data, dtype=np.int16)
+        audio_data = np.frombuffer(in_data, dtype=np.int16)
         # Select every alternate value starting from index 0 (left channel)
-        mono_data = audio_data[::2]
-        return mono_data
+        self.mono_data = audio_data[::2]
+        return (in_data, pyaudio.paContinue)

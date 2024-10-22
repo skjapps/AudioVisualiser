@@ -36,7 +36,7 @@ if performanceDebug:
 #####################################
 #             Constants             #
 #####################################
-OriginalAppResolution = (960,540)
+OriginalAppResolution = (960,480)
 
 
 #####################################
@@ -56,7 +56,6 @@ media_mode = config.get('Customisation', 'media_mode')
 media_update_rate = config.getint('Customisation', 'media_update_rate')
 
 # Graphics Customisation
-style = config.get('Customisation', 'Style')
 num_of_bars = config.getint('Customisation', 'NumOfBars')
 smoothing_factor = config.getfloat('Customisation', 'smoothing_factor')
 frame_rate = config.getint('Customisation', 'FrameRate')
@@ -143,6 +142,7 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_
 #####################################
 # Calculation variables:
 previous_log_fft_data = None
+fft_data = None
 # Program variables:
 running = True
 song_name_text = ""
@@ -156,7 +156,6 @@ try:
 except Exception as e:
     # print("Error:", e, "\n\n")
     background = None
-drawArrayLength = 0
 while running:
     
     start_time = pygame.time.get_ticks()
@@ -197,31 +196,32 @@ while running:
 
     # AUDIO PROCESSING
     try:
-        data = p.read_mono()
-        fft_data = np.abs(np.fft.fft(data))[:CHUNK // 2]
+        fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
         # fft_data = np.abs(fft_processor.get_smoothed_fft_result())
     except Exception as error:
         print("An error occurred:", error)
 
     audio_time_fft = pygame.time.get_ticks()
 
-    if style == "Bars":
-        if 'log_bins' not in globals():
-            log_bins = np.logspace(0, np.log10(CHUNK//2), num=num_of_bars, base=10.0, dtype=int)
-            log_bins = np.unique(log_bins)
+    # The new maths
+    # Smooth interpretation
+    log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
+    linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
+    smooth_log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
 
-        log_fft_data = np.array([np.mean(fft_data[log_bins[i-1]:log_bins[i]]) for i in range(1, len(log_bins))])
+    # Create evenly spaced bins for averaging
+    bins = np.linspace(0, len(smooth_log_fft_data), num_of_bars + 1, dtype=int)
 
-    elif style == "Smooth":
-        log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
-        linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
-        log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
+    # Averaging the smooth log fft data into bars
+    log_fft_data = np.array([np.mean(smooth_log_fft_data[bins[i]:bins[i+1]]) for i in range(num_of_bars)])
 
-    drawArrayLength = len(log_fft_data)
-
-    logarithmic_multiplier = np.log10(np.linspace(1 + 4*bass_pump, 10, len(log_fft_data)))
+    # Bass reduction 
+    # log10 of a linear 1 to 10, for the right effect. theoretically a sharper (ie log100)
+    # or something might be better. doesn't exist.
+    logarithmic_multiplier = np.log10(np.linspace(1 + 1*bass_pump, 10, len(log_fft_data)))
     log_fft_data *= logarithmic_multiplier
 
+    # Normalisation of values
     max_value = np.max(log_fft_data)
     if max_value > 0:
         log_fft_data = log_fft_data / (max_value * 0.8)
@@ -269,17 +269,14 @@ while running:
 
     # Draw bars
     if sp.isPlaying or (max_value > 30) :
-        bar_width = w // drawArrayLength
-        for i in range(1, drawArrayLength):
+        bar_width = w // len(log_fft_data)
+        for i in range(1, len(log_fft_data)):
             bar_height = log_fft_data[i] * h * 0.5 # Scale to screen height
             log_fft_data[i] = min(log_fft_data[i], 1)
             pygame.draw.rect(screen, (
                                         (Colour[0] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50), 
                                         (Colour[1] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50), 
-                                        (Colour[2] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50),
-                                        # (Colour[0] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
-                                        # (Colour[1] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125), 
-                                        # (Colour[2] * min(log_fft_data[i], 0.5) + album_art_colour_vibrancy * 125),
+                                        (Colour[2] * min(log_fft_data[i], 0.8) + album_art_colour_vibrancy * 50)
                                     ), 
                             (i * bar_width + (visualiser_position[0] * w), 
                             h - bar_height + (-visualiser_position[1] * h), 
