@@ -134,6 +134,7 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_
 previous_log_fft_data = None
 # Program variables:
 running = True
+song_name_text = ""
 scalar = 0 # colour scaling
 # Pick a random background from folder
 try:
@@ -276,7 +277,11 @@ while running:
     # Render Spotify Data
     if sp.results != None :
         # Render song name
-        song_name = font_song_name.render(sp.song_name, 
+        if song_name_short:
+            song_name_text = sp.song_name.split("(")[0]
+        else:
+            song_name_text = sp.song_name
+        song_name = font_song_name.render(song_name_text, 
                                           True, Colour)
         # Display song name
         screen.blit(song_name, (w * song_name_position[0], 
