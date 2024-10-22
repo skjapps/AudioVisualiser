@@ -12,9 +12,12 @@
 
 
 ## The build command
-`PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data ".env:." --hidden-import dotenv .\AudioVisualiserSpotipyWindows.py`
+`PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data ".env:." --add-data "assets/ico/ico.png:assets/ico" --hidden-import dotenv .\AudioVisualiserSpotipyWindows.py`
 hiding my keeeys!!
 
+# If the application is run as a bundle, the PyInstaller bootloader
+# extends the sys module by a flag frozen=True and sets the app 
+# path into variable _MEIPASS'.
 
 ~~This maybe the last time i commit (sad) it works well enough, good luck !~~ I just love this project too much i will keep going...
 

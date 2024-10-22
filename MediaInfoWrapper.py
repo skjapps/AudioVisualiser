@@ -91,7 +91,7 @@ class MediaInfoWrapper():
                 self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
                 artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
                 self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
-                print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
+                # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
             # elif self.mode == "winsdk" :
             #     # Not caching windows album art data, no need.
             #     self.results = asyncio.run(self.get_media_info())
@@ -188,7 +188,8 @@ class MediaInfoWrapper():
 
         # Average image colour 
         if get_colour:
-            self.get_vibrant_img_colour(filename)
+            # self.get_vibrant_img_colour(filename)
+            self.get_avg_img_colour(filename)
 
         return ret
 
@@ -231,8 +232,6 @@ class MediaInfoWrapper():
         
         # Convert back to the range [0, 255]
         self.vibrant_colour_album_art = (vibrant_color * 255).astype(int).tolist()
-
-        return self.vibrant_colour_album_art
         
 
     # From https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python

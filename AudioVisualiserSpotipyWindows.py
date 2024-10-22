@@ -7,14 +7,17 @@ import random
 import configparser
 import cProfile
 import pstats
+import re
+import sys
 
 import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
-from FFTProcessor import FFTProcessor
 from ImageFlipper import ImageFlipper
+# from FFTProcessor import FFTProcessor
 
 from PIL import Image
+from pathlib import Path
 
 # Using Pyaudio based version package
 # https://github.com/s0d3s/PyAudioWPatch/blob/master/examples/pawp_record_wasapi_loopback.py
@@ -23,7 +26,7 @@ from PIL import Image
 #               Debug               #
 #####################################
 timingDebug = False
-performanceDebug = True
+performanceDebug = False
 
 profiler = cProfile.Profile()
 if performanceDebug:
@@ -94,13 +97,20 @@ if os.name == 'nt' :
 # Initialize Pygame
 # Set these first so it shows correctly
 pygame.display.set_caption("Audio Visualiser")
-pygame.display.set_icon(pygame.image.load('assets/ico/ico.png'))
+# Get the path to the icon file
+if getattr(sys, 'frozen', False):
+    base_path = Path(sys._MEIPASS)
+else:
+    base_path = Path(__file__).resolve().parent
+icon_path = base_path / 'assets/ico/ico.png'
+pygame.display.set_icon(pygame.image.load(icon_path))
 # Init pygame graphics engine
 pygame.init()
 screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)), vsync=1)
 w, h = pygame.display.get_surface().get_size()
 clock = pygame.time.Clock()
 # Fonts setup
+available_fonts = pygame.font.get_fonts()
 font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
 font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 
@@ -139,7 +149,7 @@ song_name_text = ""
 scalar = 0 # colour scaling
 # Pick a random background from folder
 try:
-    random_background = str('assets/img/' + random.choice(os.listdir('assets/img/')))
+    random_background = str('backgrounds/' + random.choice(os.listdir('backgrounds/')))
     background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
     background.resize_frames(OriginalAppResolution[0] / background.size[0],
                              OriginalAppResolution[1] / background.size[1])
@@ -163,9 +173,9 @@ while running:
             # Info Font
             # Max instead of min for wider resolutions
             # Min instead of max for "phone" resolutions
-            ResizedSongNameFontSize = int(song_name_font_size * max(w/OriginalAppResolution[0],
+            ResizedSongNameFontSize = int(song_name_font_size * min(w/OriginalAppResolution[0],
                                                                 h/OriginalAppResolution[1]))
-            ResizedArtistNameFontSize = int(artist_name_font_size * max(w/OriginalAppResolution[0],
+            ResizedArtistNameFontSize = int(artist_name_font_size * min(w/OriginalAppResolution[0],
                                                                 h/OriginalAppResolution[1]))
             ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
                                                             h/OriginalAppResolution[1]) * 0.3
@@ -225,12 +235,15 @@ while running:
     # SPOTIFY PROCESSING
     sp.update(pygame.time.get_ticks())
     if sp.updated & (sp.results != None):
-        album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-        album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-        artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
-        flipper.change_images(album_art, artist_image)
-        sp.updated = False
+        try:
+            album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+            album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+            artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+            artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
+            flipper.change_images(album_art, artist_image)
+            sp.updated = False
+        except:
+            pass
 
     spotify_time = pygame.time.get_ticks()
 
@@ -247,11 +260,11 @@ while running:
 
     # Album Art colouring
     # Colour avg
-    scalar = 255 - max(sp.vibrant_colour_album_art)
+    scalar = 255 - max(sp.avg_colour_album_art)
     Colour = (
-                sp.vibrant_colour_album_art[0] + scalar * album_art_colour_vibrancy,
-                sp.vibrant_colour_album_art[1] + scalar * album_art_colour_vibrancy, 
-                sp.vibrant_colour_album_art[2] + scalar * album_art_colour_vibrancy
+                sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
+                sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy, 
+                sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
              )
 
     # Draw bars
@@ -279,7 +292,7 @@ while running:
     if sp.results != None :
         # Render song name
         if song_name_short:
-            song_name_text = sp.song_name.split("(")[0]
+            song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
         else:
             song_name_text = sp.song_name
         song_name = font_song_name.render(song_name_text, 
@@ -297,7 +310,7 @@ while running:
 
         # Display album art
         if (album_art != None) or (artist_image != None) :
-        # Update the flipper
+            # Update the flipper
             flipper.update()
 
             # Draw the current image

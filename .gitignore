@@ -1,6 +1,9 @@
 # Ignore virtual environment
 venv/
 
+# Ignore assets
+backgrounds/
+
 # Ignore caches
 cache/
 .cache

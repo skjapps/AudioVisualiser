@@ -3,8 +3,9 @@ A Python (PyGame) based Graphical Audio spectrum visualiser for Windows with Spo
 
 ## "Installtion"
 There is none! Just go to releases, download the latest, load and enjoy!
-Try changing the config, most of the settings work, if you mess it up just get the config from here again all good
-If you don't use spotify, put `media_mode = None` instead to just see the visualiser.
+Try changing the config, most of the settings work
+If you don't use spotify, put `media_mode = None` instead to just see the visualiser
+Put GIF backgrounds in a folder named `backgrounds` next to the app to use cool animated backgrounds
 
 ## Featured Python Libraries
 - Spotipy: Spotify api connections
