@@ -115,13 +115,14 @@ p = PyAudioWrapper(CHUNK)
 # fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream, sample_rate=p.default_speakers["defaultSampleRate"])
 
 # Spotify #
-sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_update_rate)
-if sp.results != None:
-    album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-    album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-    artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-    artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
-    sp.updated = False
+if media_mode != None :
+    sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_update_rate)
+    if sp.results != None:
+        album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+        album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+        artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
+        sp.updated = False
 
 # Create an ImageFlipper instance
 flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))

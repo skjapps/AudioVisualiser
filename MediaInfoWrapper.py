@@ -7,10 +7,10 @@ import shutil
 import os
 import threading
 import asyncio
-import json
 import base64
 import colorsys
 
+from dotenv import load_dotenv
 from PIL import Image
 
 # WinRT is now winsdk
@@ -43,14 +43,11 @@ class MediaInfoWrapper():
 
         # spotify related
         self._scope = "user-read-currently-playing user-read-recently-played" # Only need what user is listening to. 
-        # with open('spotify_api.json') as config_file:
-        #     config = json.load(config_file)
-        #     self._client_id = config['client_id']
-        #     self._client_secret = config['client_secret']
+        load_dotenv()
         # The spotify api object
         self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
-                                                    client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
-                                                    client_secret="ec4c90f7bbcb4ff8a8b6763d4c505f60",
+                                                    client_id=os.getenv("SPOTIPY_CLIENT_ID"), 
+                                                    client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
                                                     redirect_uri="http://localhost:8080"))
             
         # private, setup
@@ -85,7 +82,6 @@ class MediaInfoWrapper():
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                 if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
                     self.changed = True
-                
                 # Set media related info
                 self.song_name = self.results['item']['name']
                 self.artist_name = self.results['item']['artists'][0]['name']
@@ -95,6 +91,7 @@ class MediaInfoWrapper():
                 self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
                 artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
                 self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+                print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
             # elif self.mode == "winsdk" :
             #     # Not caching windows album art data, no need.
             #     self.results = asyncio.run(self.get_media_info())

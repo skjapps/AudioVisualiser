@@ -11,6 +11,11 @@
 - ...
 
 
+## The build command
+`PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data ".env:." --hidden-import dotenv .\AudioVisualiserSpotipyWindows.py`
+hiding my keeeys!!
+
+
 ~~This maybe the last time i commit (sad) it works well enough, good luck !~~ I just love this project too much i will keep going...
 
 # Useful Links (the tabs i have open)
