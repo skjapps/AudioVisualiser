@@ -216,8 +216,7 @@ while running:
     log_fft_data = np.array([np.mean(smooth_log_fft_data[bins[i]:bins[i+1]]) for i in range(num_of_bars)])
 
     # Bass reduction 
-    # log10 of a linear 1 to 10, for the right effect. theoretically a sharper (ie log100)
-    # or something might be better. doesn't exist.
+    # log10 of a linear 1 to 10, for the right effect.
     logarithmic_multiplier = np.log10(np.linspace(1 + 1*bass_pump, 10, len(log_fft_data)))
     log_fft_data *= logarithmic_multiplier
 

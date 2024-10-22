@@ -4,6 +4,9 @@ import math
 def ease_in_out_cosine(t):
     return abs(math.cos(math.pi * t))
 
+def ease_in_out_sine(t):
+    return abs(math.sin(math.pi * t))
+
 class ImageFlipper:
     def __init__(self, image1_pygame_surface, image2_pygame_surface, flip_interval, flip_duration):
         self.image1 = image1_pygame_surface
@@ -13,7 +16,8 @@ class ImageFlipper:
         self.last_flip_time = pygame.time.get_ticks()
         self.current_image = self.image1
         self.flipping = False
-        self.scale = 1
+        self.scale_width = 1
+        self.scale_height = 1
         self.image_switched = False
 
     def update(self):
@@ -25,13 +29,14 @@ class ImageFlipper:
             if t >= 1:
                 self.flipping = False
                 self.last_flip_time = current_time
-                self.scale = 1
+                self.scale_width = 1
                 self.image_switched = False
             else:
                 if t >= 0.5 and not self.image_switched:
                     self.current_image = self.image2 if self.current_image == self.image1 else self.image1
                     self.image_switched = True
-                self.scale = ease_in_out_cosine(t)
+                self.scale_width = ease_in_out_cosine(t)
+                self.scale_height = ease_in_out_sine(t)
 
         elif elapsed_time >= self.flip_interval:
             self.flipping = True
@@ -39,9 +44,10 @@ class ImageFlipper:
 
     def draw(self, screen, position):
         if self.flipping:
-            scaled_width = int(self.current_image.get_width() * self.scale)
+            scaled_width = int(self.current_image.get_width() * self.scale_width)
+            scaled_height = int(self.current_image.get_height() + (self.current_image.get_height() * self.scale_height * 0.1))
             if scaled_width > 0:  # Ensure width is positive
-                scaled_image = pygame.transform.scale(self.current_image, (scaled_width, self.current_image.get_height()))
+                scaled_image = pygame.transform.scale(self.current_image, (scaled_width, scaled_height))
                 rect = scaled_image.get_rect(center=position)
                 screen.blit(scaled_image, rect.topleft)
         else:
@@ -54,7 +60,8 @@ class ImageFlipper:
             self.image1 = image1_pygame_surface
             self.image2 = image2_pygame_surface
             self.current_image = self.image1
-            self.scale = 1
+            self.scale_width = 1
+            self.scale_height = 1
 
     def set_flip_interval(self, flip_interval):
         self.flip_interval = flip_interval
