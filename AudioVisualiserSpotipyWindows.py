@@ -306,14 +306,17 @@ while running:
 
         # Display album art
         if (album_art != None) or (artist_image != None) :
-            # Update the flipper
-            flipper.update()
+            try:
+                # Update the flipper
+                flipper.update()
 
-            # Draw the current image
-            flipper.draw(screen, (w * album_art_position[0],
-                                    h - h * album_art_position[1]))
-            # screen.blit(album_art, (w * album_art_position[0],
-            #                         h - h * album_art_position[1]))
+                # Draw the current image
+                flipper.draw(screen, (w * album_art_position[0],
+                                        h - h * album_art_position[1]))
+                # screen.blit(album_art, (w * album_art_position[0],
+                #                         h - h * album_art_position[1]))
+            except:
+                pass
                     
     graphics_time = pygame.time.get_ticks()
     
