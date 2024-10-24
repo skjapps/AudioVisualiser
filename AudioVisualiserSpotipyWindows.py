@@ -14,19 +14,25 @@ import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
 from ImageFlipper import ImageFlipper
+from OptionsScreen import OptionsWindow
 # from FFTProcessor import FFTProcessor
 
 from PIL import Image
 from pathlib import Path
 
-# Using Pyaudio based version package
-# https://github.com/s0d3s/PyAudioWPatch/blob/master/examples/pawp_record_wasapi_loopback.py
+#####################################
+#              Config               #
+#####################################
+# Initialize the parser
+config = configparser.ConfigParser()
+# Read the configuration file
+config.read('config.cfg')
 
 #####################################
 #               Debug               #
 #####################################
+performanceDebug = config.getboolean('Customisation', 'performanceDebug')
 timingDebug = False
-performanceDebug = False
 
 profiler = cProfile.Profile()
 if performanceDebug:
@@ -42,15 +48,10 @@ OriginalAppResolution = (960,480)
 #####################################
 #           Customisation           #
 #####################################
-# Initialize the parser
-config = configparser.ConfigParser()
-
-# Read the configuration file
-config.read('config.cfg')
 
 # Access the settings
 CHUNK = config.getint('Customisation', 'CHUNK')
-fft_update_rate = config.getfloat('Customisation', 'fft_update_rate')
+# fft_update_rate = config.getfloat('Customisation', 'fft_update_rate')
 cache_limit = config.getint('Customisation', 'cache_limit')
 media_mode = config.get('Customisation', 'media_mode')
 media_update_rate = config.getint('Customisation', 'media_update_rate')
@@ -113,6 +114,16 @@ available_fonts = pygame.font.get_fonts()
 font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
 font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 
+#####################################
+#              Options              #
+#####################################
+# Create an instance of OptionsWindow and close it
+options_window = OptionsWindow()
+options_window.close()
+# Define a function to open the Tkinter window
+def open_options():
+    options_window.show()
+
 # To initialise variables
 album_art = None
 artist_image = None
@@ -141,11 +152,12 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_
 #             Main loop             #
 #####################################
 # Calculation variables:
-previous_log_fft_data = None
+previous_log_fft_data = []
 fft_data = None
 # Program variables:
 running = True
 song_name_text = ""
+# options_shown = False
 scalar = 0 # colour scaling
 # Pick a random background from folder
 try:
@@ -164,6 +176,19 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_o:
+                open_options()
+            if event.key == pygame.K_F4:
+                fullscreen = not fullscreen
+                if fullscreen:
+                    screen = pygame.display.set_mode((ctypes.windll.user32.GetSystemMetrics(0), 
+                                                      ctypes.windll.user32.GetSystemMetrics(1)), pygame.FULLSCREEN)
+                else:
+                    screen = pygame.display.set_mode((OriginalAppResolution[0], OriginalAppResolution[1]),
+                                                     pygame.RESIZABLE)
+                # call a resize event
+                pygame.event.post(pygame.event.Event(pygame.VIDEORESIZE))
         if event.type == pygame.VIDEORESIZE:
             #  Get canvas size when resized (on instant)
             w, h = pygame.display.get_surface().get_size()
@@ -217,7 +242,7 @@ while running:
 
     # Bass reduction 
     # log10 of a linear 1 to 10, for the right effect.
-    logarithmic_multiplier = np.log10(np.linspace(1 + 1*bass_pump, 10, len(log_fft_data)))
+    logarithmic_multiplier = np.power(np.log10(np.linspace(1 + 1*bass_pump, 10, len(log_fft_data))), 2*(1-bass_pump))
     log_fft_data *= logarithmic_multiplier
 
     # Normalisation of values
@@ -225,7 +250,7 @@ while running:
     if max_value > 0:
         log_fft_data = log_fft_data / (max_value * 0.8)
 
-    if previous_log_fft_data is not None:
+    if (previous_log_fft_data is not None) & (len(log_fft_data) == len(previous_log_fft_data)):
         log_fft_data = smoothing_factor * previous_log_fft_data + (1 - smoothing_factor) * log_fft_data
     previous_log_fft_data = log_fft_data
 
@@ -241,8 +266,8 @@ while running:
             artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
             flipper.change_images(album_art, artist_image)
             sp.updated = False
-        except:
-            pass
+        except Exception as error:
+            print(error, "\n\n")
 
     spotify_time = pygame.time.get_ticks()
 
@@ -315,8 +340,8 @@ while running:
                                         h - h * album_art_position[1]))
                 # screen.blit(album_art, (w * album_art_position[0],
                 #                         h - h * album_art_position[1]))
-            except:
-                pass
+            except Exception as error:
+                print(error)
                     
     graphics_time = pygame.time.get_ticks()
     
@@ -334,6 +359,17 @@ while running:
 
     # Update display
     pygame.display.flip()
+
+    # Get options changes
+    frame_rate = options_window.frame_rate.get()
+    num_of_bars = options_window.num_of_bars.get()
+    media_update_rate = options_window.media_update_rate.get()
+    bass_pump = options_window.bass_pump.get()
+    smoothing_factor = options_window.smoothing_factor.get()
+
+    # Periodically call the Tkinter event loop
+    options_window.window.update_idletasks()
+    options_window.window.update()
 
     # Cap the frame rate
     clock.tick(frame_rate)  # Lock the program to FPS

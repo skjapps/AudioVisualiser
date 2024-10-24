@@ -33,6 +33,7 @@ class MediaInfoWrapper():
         self.artist_image_data = None
         self.cache_limit = cache_limit
         self.media_update_rate = media_update_rate
+        
 
         # Storing media info, for any mode
         self.song_name = None
@@ -40,18 +41,16 @@ class MediaInfoWrapper():
         self.isPlaying = False
         self.updated = False # When data is updated, this is True (avoid thread blocking)
         self.new_data = False # If data is new, this is True (i.e: to indicate change in song)
+        self._sp_last_update = current_tick 
 
         # spotify related
         self._scope = "user-read-currently-playing user-read-recently-played" # Only need what user is listening to. 
         load_dotenv()
         # The spotify api object
-        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
+        self._sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
                                                     client_id=os.getenv("SPOTIPY_CLIENT_ID"), 
                                                     client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
                                                     redirect_uri="http://localhost:8080"))
-            
-        # private, setup
-        self._sp_last_update = current_tick
         self._lock = threading.Lock()
 
         # Make cache folders
@@ -74,124 +73,38 @@ class MediaInfoWrapper():
             # Start a new thread to get data
             threading.Thread(target=self.get_data).start()
 
-    # if self.results are none, the data failed.
     def get_data(self):
-        try:
-            if self.mode == "Spotify" :
-                self.results = self.sp.currently_playing()
-                # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
-                    self.changed = True
-                # Set media related info
-                self.song_name = self.results['item']['name']
-                self.artist_name = self.results['item']['artists'][0]['name']
-                # print(self.results['is_playing'])
-                self.isPlaying = self.results['is_playing']
-                # Cache Album Art
-                self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
-                artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
-                self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
-                # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-            # elif self.mode == "winsdk" :
-            #     # Not caching windows album art data, no need.
-            #     self.results = asyncio.run(self.get_media_info())
-            #     self.song_name = self.results['title']
-            #     self.artist_name = self.results['artist']
-            #     print(self.artist_name)
-            #     print(self.song_name)
-            #     asyncio.run(self.get_album_art_win())
-            #     self.get_avg_img_colour(self.album_art_data)
-        except:
-            self.results = None
+        with self._lock:
+            try:
+                if self.mode == "Spotify":
+                    self.results = self._sp.currently_playing()
+                    if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']):
+                        self.changed = True
+                    self.song_name = self.results['item']['name']
+                    self.artist_name = self.results['item']['artists'][0]['name']
+                    self.isPlaying = self.results['is_playing']
+                    self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                    artist_info = self._sp.artist(self.results['item']['artists'][0]['uri'])
+                    self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+            except Exception as error:
+                print(error, "\n\n")
+                self.results = None
+            self.updated = True
 
-        self.updated = True
-        # self.results = None              
-
-    async def get_media_info(self):
-        sessions = await MediaManager.request_async()
-
-        # This source_app_user_model_id check and if statement is optional
-        # Use it if you want to only get a certain player/program's media
-        # (e.g. only chrome.exe's media not any other program's).
-
-        # To get the ID, use a breakpoint() to run sessions.get_current_session()
-        # while the media you want to get is playing.
-        # Then set TARGET_ID to the string this call returns.
-
-        current_session = sessions.get_current_session()
-        if current_session:  # there needs to be a media session running
-            # print(current_session.source_app_user_model_id)
-            if current_session.source_app_user_model_id == current_session.source_app_user_model_id:
-
-                info = await current_session.try_get_media_properties_async()
-
-                # song_attr[0] != '_' ignores system attributes
-                info_dict = {song_attr: info.__getattribute__(song_attr) for song_attr in dir(info) if song_attr[0] != '_'}
-
-                # converts winrt vector to list
-                info_dict['genres'] = list(info_dict['genres'])
-
-                # Current Playing status (4 is Playing and 5 is Not)
-                self.isPlaying = current_session.get_playback_info().playback_status == 4
-
-                return info_dict
-
-        # It could be possible to select a program from a list of current
-        # available ones. I just haven't implemented this here for my use case.
-        # See references for more information.
-        raise Exception('TARGET_PROGRAM is not the current media session')  
-    
-    async def get_album_art_win(self):
-        # create the current_media_info dict with the earlier code first
-        thumb_stream_ref = self.results['thumbnail']
-
-        # 5MB (5 million byte) buffer - thumbnail unlikely to be larger
-        thumb_read_buffer = Buffer(5000000)
-
-        # copies data from data stream reference into buffer created above
-        await self.read_stream_into_buffer(thumb_stream_ref, thumb_read_buffer)
-
-        # reads data (as bytes) from buffer
-        buffer_reader = DataReader.from_buffer(thumb_read_buffer)
-        self.album_art_data = buffer_reader.read_bytes(thumb_read_buffer.length)
-        print("Got album art")
-
-    async def read_stream_into_buffer(self, stream_ref, buffer):
-        readable_stream = await stream_ref.open_read_async()
-        await readable_stream.read_async(buffer, buffer.capacity, InputStreamOptions.READ_AHEAD)
-
-
-    # Cache Album Art
-    # Also saves the average colour of the current album art to "Colour"
-    # get_colour either true or false
     def CacheImage(self, url, get_colour):
-        # Clear Cache above certain size
-        if (self.get_folder_size('cache/') >= (self.cache_limit * 2 ** 20)):
-            # Remove the folder and its contents
-            shutil.rmtree('cache/')
-            
-            # Make the folders
-            if not os.path.exists('cache/'):
+        with self._lock:
+            if self.get_folder_size('cache/') >= (self.cache_limit * 2 ** 20):
+                shutil.rmtree('cache/')
                 os.makedirs('cache/')
                 os.makedirs('cache/img')
-
-        # Find the url
-        filename = 'cache/img/' + url.split('/')[-1] + '.jpg'
-        
-        # Load image data and save if needed
-        try:
-            ret = open(filename, 'rb').read()
-        except FileNotFoundError:
-            ret = requests.get(url).content
-            with open(filename, 'wb') as handler:
-                handler.write(ret)
-
-        # Average image colour 
-        if get_colour:
-            # self.get_vibrant_img_colour(filename)
-            self.get_avg_img_colour(filename)
-
-        return ret
+            filename = 'cache/img/' + url.split('/')[-1] + '.jpg'
+            try:
+                ret = open(filename, 'rb').read()
+            except FileNotFoundError:
+                ret = requests.get(url).content
+                with open(filename, 'wb') as f:
+                    f.write(ret)
+            return ret
 
     def get_avg_img_colour(self, filename):
         # Average image colour 
@@ -206,34 +119,7 @@ class MediaInfoWrapper():
         if np.isscalar(self.avg_colour_album_art):
             self.avg_colour_album_art = np.array([self.avg_colour_album_art] * 3)
 
-    def get_vibrant_img_colour(self, filename):
-        # Load the image
-        image = Image.open(filename)
-        # Convert the image to a NumPy array
-        image_array = np.array(image)
-        
-        # Normalize the RGB values to the range [0, 1]
-        image_array = image_array / 255.0
-        
-        # Convert RGB to HSV
-        hsv_image = np.zeros_like(image_array)
-        hsv_image[..., 0], hsv_image[..., 1], hsv_image[..., 2] = np.vectorize(colorsys.rgb_to_hsv)(
-            image_array[..., 0], image_array[..., 1], image_array[..., 2]
-        )
-        
-        # Find the index of the pixel with the highest saturation and value
-        max_saturation_value_index = np.argmax(hsv_image[..., 1] * hsv_image[..., 2])
-        
-        # Convert the index back to 2D coordinates
-        max_saturation_value_coords = np.unravel_index(max_saturation_value_index, hsv_image[..., 1].shape)
-        
-        # Get the RGB value of the most vibrant color
-        vibrant_color = image_array[max_saturation_value_coords]
-        
-        # Convert back to the range [0, 255]
-        self.vibrant_colour_album_art = (vibrant_color * 255).astype(int).tolist()
-        
-
+    
     # From https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python
     def get_folder_size(self, start_path = '.'):
         total_size = 0
@@ -245,7 +131,93 @@ class MediaInfoWrapper():
                     total_size += os.path.getsize(fp)
 
         return total_size
+
+    #####################################
+    #           WIP/Depreciated         #
+    #####################################
+    # async def get_media_info(self):
+    #     sessions = await MediaManager.request_async()
+
+    #     # This source_app_user_model_id check and if statement is optional
+    #     # Use it if you want to only get a certain player/program's media
+    #     # (e.g. only chrome.exe's media not any other program's).
+
+    #     # To get the ID, use a breakpoint() to run sessions.get_current_session()
+    #     # while the media you want to get is playing.
+    #     # Then set TARGET_ID to the string this call returns.
+
+    #     current_session = sessions.get_current_session()
+    #     if current_session:  # there needs to be a media session running
+    #         # print(current_session.source_app_user_model_id)
+    #         if current_session.source_app_user_model_id == current_session.source_app_user_model_id:
+
+    #             info = await current_session.try_get_media_properties_async()
+
+    #             # song_attr[0] != '_' ignores system attributes
+    #             info_dict = {song_attr: info.__getattribute__(song_attr) for song_attr in dir(info) if song_attr[0] != '_'}
+
+    #             # converts winrt vector to list
+    #             info_dict['genres'] = list(info_dict['genres'])
+
+    #             # Current Playing status (4 is Playing and 5 is Not)
+    #             self.isPlaying = current_session.get_playback_info().playback_status == 4
+
+    #             return info_dict
+
+    #     # It could be possible to select a program from a list of current
+    #     # available ones. I just haven't implemented this here for my use case.
+    #     # See references for more information.
+    #     raise Exception('TARGET_PROGRAM is not the current media session')  
     
+    # async def get_album_art_win(self):
+    #     # create the current_media_info dict with the earlier code first
+    #     thumb_stream_ref = self.results['thumbnail']
+
+    #     # 5MB (5 million byte) buffer - thumbnail unlikely to be larger
+    #     thumb_read_buffer = Buffer(5000000)
+
+    #     # copies data from data stream reference into buffer created above
+    #     await self.read_stream_into_buffer(thumb_stream_ref, thumb_read_buffer)
+
+    #     # reads data (as bytes) from buffer
+    #     buffer_reader = DataReader.from_buffer(thumb_read_buffer)
+    #     self.album_art_data = buffer_reader.read_bytes(thumb_read_buffer.length)
+    #     print("Got album art")
+
+    # async def read_stream_into_buffer(self, stream_ref, buffer):
+    #     readable_stream = await stream_ref.open_read_async()
+    #     await readable_stream.read_async(buffer, buffer.capacity, InputStreamOptions.READ_AHEAD)
+
+    # def get_vibrant_img_colour(self, filename):
+    #     # Load the image
+    #     image = Image.open(filename)
+    #     # Convert the image to a NumPy array
+    #     image_array = np.array(image)
+        
+    #     # Normalize the RGB values to the range [0, 1]
+    #     image_array = image_array / 255.0
+        
+    #     # Convert RGB to HSV
+    #     hsv_image = np.zeros_like(image_array)
+    #     hsv_image[..., 0], hsv_image[..., 1], hsv_image[..., 2] = np.vectorize(colorsys.rgb_to_hsv)(
+    #         image_array[..., 0], image_array[..., 1], image_array[..., 2]
+    #     )
+        
+    #     # Find the index of the pixel with the highest saturation and value
+    #     max_saturation_value_index = np.argmax(hsv_image[..., 1] * hsv_image[..., 2])
+        
+    #     # Convert the index back to 2D coordinates
+    #     max_saturation_value_coords = np.unravel_index(max_saturation_value_index, hsv_image[..., 1].shape)
+        
+    #     # Get the RGB value of the most vibrant color
+    #     vibrant_color = image_array[max_saturation_value_coords]
+        
+    #     # Convert back to the range [0, 255]
+    #     self.vibrant_colour_album_art = (vibrant_color * 255).astype(int).tolist()
+    
+    ##############################
+    # canvas not working....
+    ##############################
     # def get_canvas_token(self):
     #     CANVAS_TOKEN_URL = 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player'
     #     response = requests.get(CANVAS_TOKEN_URL)

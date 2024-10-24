@@ -1,6 +1,8 @@
 import pyaudiowpatch as pyaudio
 import numpy as np
 
+# Using Pyaudio based version package
+# https://github.com/s0d3s/PyAudioWPatch/blob/master/examples/pawp_record_wasapi_loopback.py
 #####################################
 #           PyAudioWPatch           #
 #####################################
