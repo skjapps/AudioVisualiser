@@ -5,3 +5,4 @@ spotipy
 Pillow
 pyaudiowpatch
 winsdk
+python-dotenv

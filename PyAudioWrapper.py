@@ -15,8 +15,7 @@ class PyAudioWrapper():
         wasapi_info = self._p.get_host_api_info_by_type(pyaudio.paWASAPI)
         # Get default WASAPI speakers
         self.default_speakers = self._p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
-        # Whenever new data is available
-        # self.updated = False
+        self.mono_data = None # The data being read
 
         # Getting loopback solution
         if not self.default_speakers["isLoopbackDevice"]:
