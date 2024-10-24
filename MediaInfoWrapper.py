@@ -39,6 +39,7 @@ class MediaInfoWrapper():
         self.artist_name = None
         self.isPlaying = False
         self.updated = False # When data is updated, this is True (avoid thread blocking)
+        self.changed = False
         self.new_data = False # If data is new, this is True (i.e: to indicate change in song)
 
         # spotify related
@@ -74,6 +75,10 @@ class MediaInfoWrapper():
             # Start a new thread to get data
             threading.Thread(target=self.get_data).start()
 
+            self.updated = True
+        else:
+            self.updated = False
+
     # if self.results are none, the data failed.
     def get_data(self):
         try:
@@ -82,6 +87,8 @@ class MediaInfoWrapper():
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                 if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
                     self.changed = True
+                else:
+                    self.changed = False
                 # Set media related info
                 self.song_name = self.results['item']['name']
                 self.artist_name = self.results['item']['artists'][0]['name']
@@ -103,8 +110,7 @@ class MediaInfoWrapper():
             #     self.get_avg_img_colour(self.album_art_data)
         except:
             self.results = None
-
-        self.updated = True
+            
         # self.results = None              
 
     async def get_media_info(self):

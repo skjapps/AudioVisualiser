@@ -72,6 +72,7 @@ background_scale = config.get('Customisation', 'BackgroundScale')
 bass_pump = config.getfloat('Customisation', 'BassPump')
 
 # Song Data Graphics Config
+font_swap = config.getboolean('Customisation', 'FontSwap')
 artist_name_position = tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))
 artist_name_font_size = config.getint('Customisation', 'ArtistNameFontSize')
 song_name_position = tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))
@@ -111,8 +112,8 @@ w, h = pygame.display.get_surface().get_size()
 clock = pygame.time.Clock()
 # Fonts setup
 available_fonts = pygame.font.get_fonts()
-font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
-font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
+font_song_name = pygame.font.SysFont('Arial', song_name_font_size, True)
+font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size, True)
 
 #####################################
 #              Options              #
@@ -311,6 +312,12 @@ while running:
             
     # Render Spotify Data
     if sp.results != None :
+        # Change font for fun when data changes
+        if sp.changed & font_swap:
+            font = random.choice(available_fonts)
+            font_song_name = pygame.font.SysFont(font, song_name_font_size, True)
+            font_artist_name = pygame.font.SysFont(font, artist_name_font_size, True)
+            sp.changed = False
         # Render song name
         if song_name_short:
             song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
@@ -332,6 +339,10 @@ while running:
         # Display album art
         if (album_art != None) or (artist_image != None) :
             try:
+                # Incase size changed
+                ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
+                                                            h/OriginalAppResolution[1]) * 0.3
+                
                 # Update the flipper
                 flipper.update()
 
@@ -366,6 +377,10 @@ while running:
     media_update_rate = options_window.media_update_rate.get()
     bass_pump = options_window.bass_pump.get()
     smoothing_factor = options_window.smoothing_factor.get()
+    album_art_size = options_window.album_art_size.get()
+    album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
+    # flipper.flip_interval = round(options_window.album_art_flip_interval.get(),1)
+    # flipper.flip_duration = round(options_window.album_art_flip_duration.get(),1)
 
     # Periodically call the Tkinter event loop
     options_window.window.update_idletasks()
