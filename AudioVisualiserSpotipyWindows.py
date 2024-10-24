@@ -158,6 +158,7 @@ fft_data = None
 # Program variables:
 running = True
 song_name_text = ""
+random_font = 'Arial' # Initialised to default font
 # options_shown = False
 scalar = 0 # colour scaling
 # Pick a random background from folder
@@ -204,8 +205,8 @@ while running:
                                                                 h/OriginalAppResolution[1]))
             ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
                                                             h/OriginalAppResolution[1]) * 0.3
-            font_song_name = pygame.font.SysFont('Arial', ResizedSongNameFontSize)
-            font_artist_name = pygame.font.SysFont('Arial', ResizedArtistNameFontSize)
+            font_song_name = pygame.font.SysFont(random_font, ResizedSongNameFontSize)
+            font_artist_name = pygame.font.SysFont(random_font, ResizedArtistNameFontSize)
             # Album art
             if sp.results != None:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
@@ -314,9 +315,9 @@ while running:
     if sp.results != None :
         # Change font for fun when data changes
         if sp.changed & font_swap:
-            font = random.choice(available_fonts)
-            font_song_name = pygame.font.SysFont(font, song_name_font_size, True)
-            font_artist_name = pygame.font.SysFont(font, artist_name_font_size, True)
+            random_font = random.choice(available_fonts)
+            font_song_name = pygame.font.SysFont(random_font, ResizedSongNameFontSize, True)
+            font_artist_name = pygame.font.SysFont(random_font, ResizedArtistNameFontSize, True)
             sp.changed = False
         # Render song name
         if song_name_short:
