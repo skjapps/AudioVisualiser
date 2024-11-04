@@ -3,6 +3,8 @@
 - ~~Make sure when songs are playing, it is showing the visualiser, house style songs do not work properly, sometimes cutting out when there is silence.~~ Changed to max value = 20, still to improve song playing detection...
 - The stretching of window ruins the resolution of the image, mildly intentional, pixelated backgrounds run faster...
 - Font selector maybe
+- Spotify fetch to true async vs broken threading.
+- 
 - .spec build not working, i dunno how it works but idc.
 ## Big changes
 - WindowsRT in WIP will allow any media titles and names to be recognised, allow both spotify and windows modes
