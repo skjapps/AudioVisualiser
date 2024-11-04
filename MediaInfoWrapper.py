@@ -84,21 +84,22 @@ class MediaInfoWrapper():
         try:
             if self.mode == "Spotify" :
                 self.results = self.sp.currently_playing()
+                # print(self.results)
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                 if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
                     self.changed = True
+                    # Set media related info
+                    self.song_name = self.results['item']['name']
+                    self.artist_name = self.results['item']['artists'][0]['name']
+                    # print(self.results['is_playing'])
+                    self.isPlaying = self.results['is_playing']
+                    # Cache Album Art
+                    self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                    artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
+                    self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+                    # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                 else:
                     self.changed = False
-                # Set media related info
-                self.song_name = self.results['item']['name']
-                self.artist_name = self.results['item']['artists'][0]['name']
-                # print(self.results['is_playing'])
-                self.isPlaying = self.results['is_playing']
-                # Cache Album Art
-                self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
-                artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
-                self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
-                # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
             # elif self.mode == "winsdk" :
             #     # Not caching windows album art data, no need.
             #     self.results = asyncio.run(self.get_media_info())

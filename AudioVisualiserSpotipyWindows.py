@@ -9,8 +9,13 @@ import cProfile
 import pstats
 import re
 import sys
+import webbrowser
+import win32api
+import win32con
+import win32gui
+import pickle
 
-import GifSprite
+from GifSprite import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
 from ImageFlipper import ImageFlipper
@@ -19,6 +24,45 @@ from OptionsScreen import OptionsWindow
 
 from PIL import Image
 from pathlib import Path
+
+#####################################
+#            Functions              #
+#####################################
+def transparent_on_top():
+    hwnd = pygame.display.get_wm_info()["window"]
+    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE,
+                        win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
+    # Set window transparency color
+    win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(*background_colour), 0, win32con.LWA_COLORKEY)
+    win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, 1|2) # NOMOVE|NOSIZE...
+
+def load_and_cache_backgrounds(background_folder, cache_folder, background_fps, app_resolution):
+    backgrounds = []
+    
+    if not os.path.exists(cache_folder):
+        os.makedirs(cache_folder)
+    
+    for filename in os.listdir(background_folder):
+        if filename.endswith('.gif'):
+            background_path = os.path.join(background_folder, filename)
+            cache_path = os.path.join(cache_folder, f"{filename}.pkl")
+
+            background = GifSprite(background_path, (0, 0), fps=background_fps)
+            background.resize_frames(app_resolution[0] / background.size[0], app_resolution[1] / background.size[1])
+
+            # if os.path.exists(cache_path):
+            #     with open(cache_path, 'rb') as cache_file:
+            #         background = pickle.load(cache_file)
+            # else:
+            #     background = GifSprite(background_path, (0, 0), fps=background_fps)
+            #     background.resize_frames(app_resolution[0] / background.size[0], app_resolution[1] / background.size[1])
+                
+            #     with open(cache_path, 'wb') as cache_file:
+            #         pickle.dump(background, cache_file)
+            
+            backgrounds.append(background)
+    
+    return backgrounds
 
 #####################################
 #              Config               #
@@ -37,13 +81,10 @@ timingDebug = False
 profiler = cProfile.Profile()
 if performanceDebug:
     profiler.enable()
-
-
 #####################################
 #             Constants             #
 #####################################
 OriginalAppResolution = (960,480)
-
 
 #####################################
 #           Customisation           #
@@ -72,7 +113,7 @@ background_scale = config.get('Customisation', 'BackgroundScale')
 bass_pump = config.getfloat('Customisation', 'BassPump')
 
 # Song Data Graphics Config
-font_swap = config.getboolean('Customisation', 'FontSwap')
+random_font_swap = config.getboolean('Customisation', 'RandomFontSwap')
 artist_name_position = tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))
 artist_name_font_size = config.getint('Customisation', 'ArtistNameFontSize')
 song_name_position = tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))
@@ -107,13 +148,37 @@ icon_path = base_path / 'assets/ico/ico.png'
 pygame.display.set_icon(pygame.image.load(icon_path))
 # Init pygame graphics engine
 pygame.init()
-screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)), vsync=1)
+screen = pygame.display.set_mode(OriginalAppResolution, flags=(pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)))
 w, h = pygame.display.get_surface().get_size()
 clock = pygame.time.Clock()
 # Fonts setup
 available_fonts = pygame.font.get_fonts()
 font_song_name = pygame.font.SysFont('Arial', song_name_font_size, True)
 font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size, True)
+
+# Create layered window
+if background_style == "Transparent":
+    transparent_on_top()
+
+# Pick a random background from folder
+# if background_style == "GIF":
+#     try:
+#         random_background = str('backgrounds/' + random.choice(os.listdir('backgrounds/')))
+#         background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
+#         background.resize_frames(OriginalAppResolution[0] / background.size[0],
+#                                 OriginalAppResolution[1] / background.size[1])
+#     except:
+#         background = None
+if background_style == "GIF" :
+    try:
+        background_folder = 'backgrounds'
+        cache_folder = 'cache/obj/back'
+        background_fps = 30
+        backgrounds = load_and_cache_backgrounds(background_folder, cache_folder, background_fps, OriginalAppResolution)
+    except Exception as Error:
+        print(Error)
+        # Reset style to simple colour
+        background_style = "Colour"
 
 #####################################
 #              Options              #
@@ -136,7 +201,11 @@ p = PyAudioWrapper(CHUNK)
 # fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream, sample_rate=p.default_speakers["defaultSampleRate"])
 
 # Spotify #
-if media_mode != None :
+# Spotify Branding
+spotify_icon_path = base_path / 'assets/ico/spotify.png'
+spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
+spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
+if media_mode == "Spotify" :
     sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(), cache_limit, media_update_rate)
     if sp.results != None:
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
@@ -158,29 +227,35 @@ fft_data = None
 # Program variables:
 running = True
 song_name_text = ""
-random_font = 'Arial' # Initialised to default font
-# options_shown = False
+window_on_top = False
+background_index = 0
+font = 'Arial' # Initialised to default font
+font_index = 0 # Counting font change index
+swap_font = False # Flag to swap font when pressed left/right
 scalar = 0 # colour scaling
-# Pick a random background from folder
-try:
-    random_background = str('backgrounds/' + random.choice(os.listdir('backgrounds/')))
-    background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
-    background.resize_frames(OriginalAppResolution[0] / background.size[0],
-                             OriginalAppResolution[1] / background.size[1])
-except Exception as e:
-    # print("Error:", e, "\n\n")
-    background = None
 while running:
     
     start_time = pygame.time.get_ticks()
 
     # Pygame Events (Quit, Window Resize)
     for event in pygame.event.get():
+        # Quit
         if event.type == pygame.QUIT:
             running = False
+        # Keyboard Buttons
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                pygame.event.post(pygame.event.Event(pygame.QUIT))
             if event.key == pygame.K_o:
                 open_options()
+            if event.key == pygame.K_LEFT:
+                font_index -= 1
+                font = available_fonts[font_index]
+                swap_font = True
+            if event.key == pygame.K_RIGHT:
+                font_index += 1
+                font = available_fonts[font_index]
+                swap_font = True
             if event.key == pygame.K_F4:
                 fullscreen = not fullscreen
                 if fullscreen:
@@ -191,6 +266,20 @@ while running:
                                                      pygame.RESIZABLE)
                 # call a resize event
                 pygame.event.post(pygame.event.Event(pygame.VIDEORESIZE))
+        # Mouse Clicks
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # If spotify button is clicked (postions of the mouse click)
+            # print(event.pos, "\n\n")
+            flipper_rect = pygame.rect.Rect((album_art_position[0] * w - (flipper.current_image.get_width()/2), 
+                                             (h - album_art_position[1] * h) - (flipper.current_image.get_height()/2)), 
+                                            flipper.current_image.get_size())
+            if spotify_icon.get_rect().collidepoint(event.pos):
+                # Open Spotify
+                webbrowser.open("https://open.spotify.com", new=0, autoraise=True)
+            if flipper_rect.collidepoint(event.pos):
+                # Open track in spotify when clicking album art
+                webbrowser.open(sp.results['item']['external_urls']['spotify'], new=0, autoraise=True)
+        # Resizing window
         if event.type == pygame.VIDEORESIZE:
             #  Get canvas size when resized (on instant)
             w, h = pygame.display.get_surface().get_size()
@@ -205,8 +294,8 @@ while running:
                                                                 h/OriginalAppResolution[1]))
             ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
                                                             h/OriginalAppResolution[1]) * 0.3
-            font_song_name = pygame.font.SysFont(random_font, ResizedSongNameFontSize)
-            font_artist_name = pygame.font.SysFont(random_font, ResizedArtistNameFontSize)
+            font_song_name = pygame.font.SysFont(font, ResizedSongNameFontSize)
+            font_artist_name = pygame.font.SysFont(font, ResizedArtistNameFontSize)
             # Album art
             if sp.results != None:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
@@ -215,10 +304,13 @@ while running:
                 artist_image = pygame.transform.scale_by(artist_image, ResizedAlbumArtSize)
                 flipper.change_images(album_art, artist_image)
             # Background
-            if background != None:
-                background.resize_frames(w / background.size[0],
-                                h / background.size[1])
-
+            if background_style == "GIF":
+                for background in backgrounds:
+                    background.resize_frames(w / background.size[0],
+                                    h / background.size[1])
+            # win32gui.UpdateLayeredWindow(hwnd, None, None, None, None, None, win32api.RGB(*background_colour), None, win32con.LWA_COLORKEY)
+            # if media_mode == "Spotify":
+            #     spotify_icon = pygame.transform.scale_by(spotify_icon, w/OriginalAppResolution[0])
     event_time = pygame.time.get_ticks()
 
     # AUDIO PROCESSING
@@ -248,9 +340,10 @@ while running:
     log_fft_data *= logarithmic_multiplier
 
     # Normalisation of values
-    max_value = np.max(log_fft_data)
+    max_value = max(np.max(log_fft_data), 1e3)
     if max_value > 0:
         log_fft_data = log_fft_data / (max_value * 0.8)
+    
 
     if (previous_log_fft_data is not None) & (len(log_fft_data) == len(previous_log_fft_data)):
         log_fft_data = smoothing_factor * previous_log_fft_data + (1 - smoothing_factor) * log_fft_data
@@ -276,9 +369,14 @@ while running:
     # GRAPHICS PROCESSING
 
     # Background GIF
-    if background != None:
-        screen.blit(background.image, background.pos)
-        background.update()
+    if background_style == "GIF":
+        for background in backgrounds:
+            # update any fading backgrounds
+            if background.fading:
+                # screen.blit(background.image, background.pos)
+                background.update()
+        screen.blit(backgrounds[background_index].image, backgrounds[background_index].pos)
+        backgrounds[background_index].update()
     else:
         screen.fill(background_colour)
 
@@ -313,12 +411,28 @@ while running:
             
     # Render Spotify Data
     if sp.results != None :
-        # Change font for fun when data changes
-        if sp.changed & font_swap:
-            random_font = random.choice(available_fonts)
-            font_song_name = pygame.font.SysFont(random_font, ResizedSongNameFontSize, True)
-            font_artist_name = pygame.font.SysFont(random_font, ResizedArtistNameFontSize, True)
+        # If spotify is being used, show spotify logo
+        if media_mode == "Spotify" :
+            screen.blit(spotify_icon, (0,
+                                       0))
+        # When data changes
+        if sp.changed:
+            if random_font_swap:
+                font = random.choice(available_fonts)
+                swap_font = True
+            if background_style == "GIF":
+                # change background with fade when song changed...
+                if(len(backgrounds) > 1):
+                    backgrounds[background_index].start_fade_out(2000)
+                    backgrounds[(background_index + 1)%len(backgrounds)].start_fade_in(2000)
+                    background_index += 1
             sp.changed = False
+            
+        if swap_font:
+            font_song_name = pygame.font.SysFont(font, ResizedSongNameFontSize, True)
+            font_artist_name = pygame.font.SysFont(font, ResizedArtistNameFontSize, True)
+            swap_font = False
+
         # Render song name
         if song_name_short:
             song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
@@ -350,8 +464,6 @@ while running:
                 # Draw the current image
                 flipper.draw(screen, (w * album_art_position[0],
                                         h - h * album_art_position[1]))
-                # screen.blit(album_art, (w * album_art_position[0],
-                #                         h - h * album_art_position[1]))
             except Exception as error:
                 print(error)
                     
@@ -382,7 +494,18 @@ while running:
     album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
     # flipper.flip_interval = round(options_window.album_art_flip_interval.get(),1)
     # flipper.flip_duration = round(options_window.album_art_flip_duration.get(),1)
-
+    # Positioning
+    if options_window.selected_element.get() == "Album Art" :
+        album_art_position = (options_window.x_position.get(),options_window.y_position.get())
+    if options_window.selected_element.get() == "Song Name" :
+        song_name_position = (options_window.x_position.get(),options_window.y_position.get())
+    if options_window.selected_element.get() == "Artist Name" :
+        artist_name_position = (options_window.x_position.get(),options_window.y_position.get())
+    if options_window.selected_element.get() == "Visualiser Position" :
+        visualiser_position = (options_window.x_position.get(),options_window.y_position.get())
+    if options_window.selected_element.get() == "Visualiser Size" :
+        visualiser_size = (options_window.x_position.get(),options_window.y_position.get())
+    
     # Periodically call the Tkinter event loop
     options_window.window.update_idletasks()
     options_window.window.update()
