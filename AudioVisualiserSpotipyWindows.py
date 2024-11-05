@@ -424,8 +424,8 @@ while running:
                 # change background with fade when song changed...
                 if(len(backgrounds) > 1):
                     backgrounds[background_index].start_fade_out(2000)
-                    backgrounds[(background_index + 1)%len(backgrounds)].start_fade_in(2000)
-                    background_index += 1
+                    backgrounds[(background_index + 1)%(len(backgrounds) - 1)].start_fade_in(2000)
+                    background_index += (background_index + 1)%(len(backgrounds) - 1)
             sp.changed = False
             
         if swap_font:

@@ -86,7 +86,7 @@ class MediaInfoWrapper():
                 self.results = self.sp.currently_playing()
                 # print(self.results)
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
+                if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']):
                     self.changed = True
                     # Set media related info
                     self.song_name = self.results['item']['name']
