@@ -53,7 +53,7 @@ class MediaInfoWrapper():
             
         # private, setup
         self._sp_last_update = current_tick
-        self._lock = threading.Lock()
+        # self._lock = threading.Lock()
 
         # Make cache folders
         if not os.path.exists('cache/'):
@@ -73,8 +73,9 @@ class MediaInfoWrapper():
             self._sp_last_update = now
 
             # Start a new thread to get data
-            threading.Thread(target=self.get_data).start()
-
+            # threading.Thread(target=self.get_data).start()
+            self.get_data()
+            
             self.updated = True
         else:
             self.updated = False
@@ -86,7 +87,7 @@ class MediaInfoWrapper():
                 self.results = self.sp.currently_playing()
                 # print(self.results)
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']) or (self.isPlaying != self.results['is_playing']) :
+                if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']):
                     self.changed = True
                     # Set media related info
                     self.song_name = self.results['item']['name']

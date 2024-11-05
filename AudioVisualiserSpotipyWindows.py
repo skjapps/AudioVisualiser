@@ -36,7 +36,7 @@ def transparent_on_top():
     win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(*background_colour), 0, win32con.LWA_COLORKEY)
     win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, 1|2) # NOMOVE|NOSIZE...
 
-def load_and_cache_backgrounds(background_folder, cache_folder, background_fps, app_resolution):
+def load_and_cache_backgrounds(background_folder, cache_folder, background_fps, app_resolution, background_scale):
     backgrounds = []
     
     if not os.path.exists(cache_folder):
@@ -47,7 +47,7 @@ def load_and_cache_backgrounds(background_folder, cache_folder, background_fps, 
             background_path = os.path.join(background_folder, filename)
             cache_path = os.path.join(cache_folder, f"{filename}.pkl")
 
-            background = GifSprite(background_path, (0, 0), fps=background_fps)
+            background = GifSprite(background_path, (0, 0), fps=background_fps, background_scale=background_scale)
             background.resize_frames(app_resolution[0] / background.size[0], app_resolution[1] / background.size[1])
 
             # if os.path.exists(cache_path):
@@ -110,6 +110,7 @@ visualiser_size = tuple(map(float, config.get('Customisation', 'VisualiserSize')
 no_frame = config.getboolean('Customisation', 'NOFRAME')
 fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
 background_scale = config.get('Customisation', 'BackgroundScale')
+background_fade_duration = config.getfloat('Customisation', 'BackgroundFadeDuration')
 bass_pump = config.getfloat('Customisation', 'BassPump')
 
 # Song Data Graphics Config
@@ -159,22 +160,13 @@ font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size, True)
 # Create layered window
 if background_style == "Transparent":
     transparent_on_top()
-
-# Pick a random background from folder
-# if background_style == "GIF":
-#     try:
-#         random_background = str('backgrounds/' + random.choice(os.listdir('backgrounds/')))
-#         background = GifSprite.GifSprite(random_background, (0,0), fps=background_fps)
-#         background.resize_frames(OriginalAppResolution[0] / background.size[0],
-#                                 OriginalAppResolution[1] / background.size[1])
-#     except:
-#         background = None
+    
 if background_style == "GIF" :
     try:
         background_folder = 'backgrounds'
         cache_folder = 'cache/obj/back'
         background_fps = 30
-        backgrounds = load_and_cache_backgrounds(background_folder, cache_folder, background_fps, OriginalAppResolution)
+        backgrounds = load_and_cache_backgrounds(background_folder, cache_folder, background_fps, OriginalAppResolution, background_scale)
     except Exception as Error:
         print(Error)
         # Reset style to simple colour
@@ -217,6 +209,61 @@ if media_mode == "Spotify" :
 # Create an ImageFlipper instance
 flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
 
+#####################################
+#            Oscilliscope           #
+#####################################
+oscilloscope_width = 400  # Width of the oscilloscope display
+oscilloscope_height = 160  # Height of the oscilloscope display
+desired_time_frame = 0.5  # Desired time frame in seconds
+sample_rate = 44100  # Sample rate in Hz
+max_samples = int(desired_time_frame * sample_rate)  # Maximum number of samples to store
+accumulated_audio_data = np.zeros(max_samples)  # Zero array for accumulated audio data
+current_length = 0  # Current number of samples stored
+gain = 0.00004   # Gain for the waveform
+
+# Create oscilloscope surface
+oscilloscope_surface = pygame.Surface((oscilloscope_width, oscilloscope_height))
+
+def append_audio_data(new_data):
+    global current_length
+    new_length = len(new_data)
+
+    if current_length + new_length > max_samples:
+        # Shift existing data to the left to make room for new data
+        shift_amount = current_length + new_length - max_samples
+        accumulated_audio_data[:-shift_amount] = accumulated_audio_data[shift_amount:]
+        current_length = max_samples  # We are now at max capacity
+    else:
+        current_length += new_length
+
+    # Add new data to the end of the array
+    accumulated_audio_data[-new_length:] = new_data
+
+def update_oscilloscope(audio_data):
+    """Draw the oscilloscope based on the accumulated audio data."""
+    global current_length
+
+    # Append new audio data
+    append_audio_data(audio_data * gain)
+
+    # Clear the oscilloscope surface
+    oscilloscope_surface.fill((0, 0, 0))  # Clear with black
+
+    # Check if there are samples to visualize
+    if current_length == 0:
+        return
+
+    # Scale audio data for visualization
+    scaled_data = accumulated_audio_data[:current_length]  # Use only valid samples
+    scaled_data = np.clip(scaled_data, -1, 1)  # Clip values to [-1, 1]
+
+    # Draw the waveform
+    for x in range(oscilloscope_width):
+        # Calculate the corresponding sample index
+        sample_index = int((x / oscilloscope_width) * current_length)
+        if sample_index < current_length:
+            y = int((scaled_data[sample_index] + 1) * (oscilloscope_height / 2))  # Scale to surface height
+            pygame.draw.line(oscilloscope_surface, (0, 255, 0), (x, oscilloscope_height // 2), (x, y))
 
 #####################################
 #             Main loop             #
@@ -373,7 +420,7 @@ while running:
         for background in backgrounds:
             # update any fading backgrounds
             if background.fading:
-                # screen.blit(background.image, background.pos)
+                screen.blit(background.image, background.pos)
                 background.update()
         screen.blit(backgrounds[background_index].image, backgrounds[background_index].pos)
         backgrounds[background_index].update()
@@ -408,7 +455,11 @@ while running:
                             bar_height * visualiser_size[1]))
             
     graphics_time_bars = pygame.time.get_ticks()
-            
+
+    # Blit the oscilloscope surface onto the main screen
+    update_oscilloscope(p.mono_data)
+    screen.blit(oscilloscope_surface, (100, 200))
+
     # Render Spotify Data
     if sp.results != None :
         # If spotify is being used, show spotify logo
@@ -423,9 +474,9 @@ while running:
             if background_style == "GIF":
                 # change background with fade when song changed...
                 if(len(backgrounds) > 1):
-                    backgrounds[background_index].start_fade_out(2000)
-                    backgrounds[(background_index + 1)%len(backgrounds)].start_fade_in(2000)
-                    background_index += 1
+                    backgrounds[background_index].start_fade_out(background_fade_duration * 1000)
+                    backgrounds[(background_index + 1)%len(backgrounds)].start_fade_in(background_fade_duration * 1000)
+                    background_index = (background_index + 1)%len(backgrounds)
             sp.changed = False
             
         if swap_font:
@@ -487,13 +538,14 @@ while running:
     # Get options changes
     frame_rate = options_window.frame_rate.get()
     num_of_bars = options_window.num_of_bars.get()
-    media_update_rate = options_window.media_update_rate.get()
+    sp.media_update_rate = options_window.media_update_rate.get()
     bass_pump = options_window.bass_pump.get()
     smoothing_factor = options_window.smoothing_factor.get()
     album_art_size = options_window.album_art_size.get()
     album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
-    # flipper.flip_interval = round(options_window.album_art_flip_interval.get(),1)
-    # flipper.flip_duration = round(options_window.album_art_flip_duration.get(),1)
+    background_fade_duration = options_window.fade_duration.get()
+    flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
+    flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
     # Positioning
     if options_window.selected_element.get() == "Album Art" :
         album_art_position = (options_window.x_position.get(),options_window.y_position.get())

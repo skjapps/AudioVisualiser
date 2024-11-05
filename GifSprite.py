@@ -2,13 +2,16 @@ import pygame
 from PIL import Image
 
 class GifSprite(pygame.sprite.Sprite):
-    def __init__(self, gif_path, pos, fps=60):
+    def __init__(self, gif_path, pos, fps=60, background_scale="Fill"):
         super().__init__()
         self._frames = self.load_gif(gif_path)
         self.image = self._frames[0]
         self.rect = self.image.get_rect(topleft=pos)
         self.pos = pos
         self.size = self._frames[0].get_size()
+        self.fading = False
+        self.background_scale = background_scale
+
         self._frame_index = 0
         self._fps = fps
         self._clock = pygame.time.Clock()
@@ -18,7 +21,7 @@ class GifSprite(pygame.sprite.Sprite):
         self._fade_duration = None
         self._fade_in = False
         self._fade_out = False
-        self.fading = False
+        
 
     def load_gif(self, gif_path):
         ret = []
@@ -39,7 +42,14 @@ class GifSprite(pygame.sprite.Sprite):
         for frame in self._frames:
             width = int(frame.get_width() * x_stretch)
             height = int(frame.get_height() * y_stretch)
-            resized_frame = pygame.transform.scale(frame, (width, height))
+            if self.background_scale == "Stretch":
+                if(x_stretch >= y_stretch) :
+                    resized_frame = pygame.transform.scale_by(frame, x_stretch)
+                else:
+                    resized_frame = pygame.transform.scale_by(frame, y_stretch)
+            else:
+                # Fill...
+                resized_frame = pygame.transform.scale(frame, (width, height))
             resized_frames.append(resized_frame)
         self._frames = resized_frames
         self.image = self._frames[0]
