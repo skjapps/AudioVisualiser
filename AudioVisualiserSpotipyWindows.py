@@ -13,16 +13,14 @@ import webbrowser
 import win32api
 import win32con
 import win32gui
-import pickle
+# import pickle
 
 from GifSprite import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
 from ImageFlipper import ImageFlipper
 from OptionsScreen import OptionsWindow
-# from FFTProcessor import FFTProcessor
 
-from PIL import Image
 from pathlib import Path
 
 #####################################
@@ -92,14 +90,13 @@ OriginalAppResolution = (960,480)
 
 # Access the settings
 CHUNK = config.getint('Customisation', 'CHUNK')
-# fft_update_rate = config.getfloat('Customisation', 'fft_update_rate')
 cache_limit = config.getint('Customisation', 'cache_limit')
 media_mode = config.get('Customisation', 'media_mode')
-media_update_rate = config.getint('Customisation', 'media_update_rate')
+media_update_rate = config.getint('Customisation', 'MediaUpdateRate')
 
 # Graphics Customisation
 num_of_bars = config.getint('Customisation', 'NumOfBars')
-smoothing_factor = config.getfloat('Customisation', 'smoothing_factor')
+smoothing_factor = config.getfloat('Customisation', 'SmoothingFactor')
 frame_rate = config.getint('Customisation', 'FrameRate')
 background_style = config.get('Customisation', 'BackgroundStyle')
 background_colour = tuple(map(int, config.get('Customisation', 'BackgroundColour').split(',')))
@@ -107,6 +104,9 @@ background_fps = config.getint('Customisation', 'BackgroundFPS')
 colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
 visualiser_position = tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))
 visualiser_size = tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))
+oscilloscope_position = tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(',')))
+oscilloscope_time_frame = config.getfloat('Customisation', 'OscilloscopeTimeFrame')
+oscilloscope_gain = config.getfloat('Customisation', 'OscilloscopeGain')
 no_frame = config.getboolean('Customisation', 'NOFRAME')
 fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
 background_scale = config.get('Customisation', 'BackgroundScale')
@@ -189,9 +189,6 @@ artist_image = None
 # Initialize PyAudio Object
 p = PyAudioWrapper(CHUNK)
 
-# Initialise FFTProcessor
-# fft_processor = FFTProcessor(chunk_size=CHUNK, update_rate=1/fft_update_rate, stream=p.stream, sample_rate=p.default_speakers["defaultSampleRate"])
-
 # Spotify #
 # Spotify Branding
 spotify_icon_path = base_path / 'assets/ico/spotify.png'
@@ -214,12 +211,9 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_
 #####################################
 oscilloscope_width = 400  # Width of the oscilloscope display
 oscilloscope_height = 160  # Height of the oscilloscope display
-desired_time_frame = 0.5  # Desired time frame in seconds
-sample_rate = 44100  # Sample rate in Hz
-max_samples = int(desired_time_frame * sample_rate)  # Maximum number of samples to store
+max_samples = int(oscilloscope_time_frame * p.default_speakers["defaultSampleRate"])  # Maximum number of samples to store
 accumulated_audio_data = np.zeros(max_samples)  # Zero array for accumulated audio data
 current_length = 0  # Current number of samples stored
-gain = 0.00004   # Gain for the waveform
 
 # Create oscilloscope surface
 oscilloscope_surface = pygame.Surface((oscilloscope_width, oscilloscope_height))
@@ -239,15 +233,16 @@ def append_audio_data(new_data):
     # Add new data to the end of the array
     accumulated_audio_data[-new_length:] = new_data
 
-def update_oscilloscope(audio_data):
+def update_oscilloscope(audio_data, colour=(0,255,0)):
     """Draw the oscilloscope based on the accumulated audio data."""
     global current_length
 
     # Append new audio data
-    append_audio_data(audio_data * gain)
+    append_audio_data(audio_data * oscilloscope_gain)
 
     # Clear the oscilloscope surface
     oscilloscope_surface.fill((0, 0, 0))  # Clear with black
+    oscilloscope_surface.set_colorkey((0,0,0)) # black transparent
 
     # Check if there are samples to visualize
     if current_length == 0:
@@ -263,7 +258,7 @@ def update_oscilloscope(audio_data):
         sample_index = int((x / oscilloscope_width) * current_length)
         if sample_index < current_length:
             y = int((scaled_data[sample_index] + 1) * (oscilloscope_height / 2))  # Scale to surface height
-            pygame.draw.line(oscilloscope_surface, (0, 255, 0), (x, oscilloscope_height // 2), (x, y))
+            pygame.draw.line(oscilloscope_surface, colour, (x, oscilloscope_height // 2), (x, y), width=3)
 
 #####################################
 #             Main loop             #
@@ -279,6 +274,7 @@ background_index = 0
 font = 'Arial' # Initialised to default font
 font_index = 0 # Counting font change index
 swap_font = False # Flag to swap font when pressed left/right
+change_background = False # Flag to change background when pressed up/down
 scalar = 0 # colour scaling
 while running:
     
@@ -296,13 +292,19 @@ while running:
             if event.key == pygame.K_o:
                 open_options()
             if event.key == pygame.K_LEFT:
-                font_index -= 1
+                font_index = (font_index - 1)%len(available_fonts)
                 font = available_fonts[font_index]
                 swap_font = True
             if event.key == pygame.K_RIGHT:
-                font_index += 1
+                font_index = (font_index + 1)%len(available_fonts)
                 font = available_fonts[font_index]
                 swap_font = True
+            # if event.key == pygame.K_UP:
+            #     background_index = (background_index + 1)%len(backgrounds)
+            #     change_background = True
+            # if event.key == pygame.K_DOWN:
+            #     background_index = (background_index - 2)%len(backgrounds)
+            #     change_background = True
             if event.key == pygame.K_F4:
                 fullscreen = not fullscreen
                 if fullscreen:
@@ -363,7 +365,6 @@ while running:
     # AUDIO PROCESSING
     try:
         fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
-        # fft_data = np.abs(fft_processor.get_smoothed_fft_result())
     except Exception as error:
         print("An error occurred:", error)
 
@@ -457,8 +458,10 @@ while running:
     graphics_time_bars = pygame.time.get_ticks()
 
     # Blit the oscilloscope surface onto the main screen
-    update_oscilloscope(p.mono_data)
-    screen.blit(oscilloscope_surface, (100, 200))
+    update_oscilloscope(p.mono_data / max(np.max(p.mono_data), 1e3), colour=Colour)
+    # update_oscilloscope(p.mono_data) (fallback to this if needed)
+    screen.blit(oscilloscope_surface, (w * oscilloscope_position[0], 
+                                         h - h * oscilloscope_position[1]))
 
     # Render Spotify Data
     if sp.results != None :
@@ -546,6 +549,7 @@ while running:
     background_fade_duration = options_window.fade_duration.get()
     flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
     flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
+    oscilloscope_gain = options_window.oscilloscope_gain.get()
     # Positioning
     if options_window.selected_element.get() == "Album Art" :
         album_art_position = (options_window.x_position.get(),options_window.y_position.get())
@@ -557,6 +561,8 @@ while running:
         visualiser_position = (options_window.x_position.get(),options_window.y_position.get())
     if options_window.selected_element.get() == "Visualiser Size" :
         visualiser_size = (options_window.x_position.get(),options_window.y_position.get())
+    if options_window.selected_element.get() == "Oscilliscope Position" :
+        oscilloscope_position = (options_window.x_position.get(),options_window.y_position.get())
     
     # Periodically call the Tkinter event loop
     options_window.window.update_idletasks()
@@ -570,9 +576,6 @@ while running:
 #                Exit               #
 #####################################
 # Clean up
-# Stop the FFTProcessor thread
-# fft_processor.stop()
-
 # Audio
 p.stream.stop_stream()
 p.stream.close()

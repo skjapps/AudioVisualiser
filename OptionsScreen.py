@@ -11,8 +11,7 @@ class OptionsWindow:
         self.window = tk.Tk()
         self.window.title("Options")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.slider_list_names = ["Album Art", "Song Name", "Artist Name", "Visualiser Position", "Visualiser Size"]
-        # self.slider_index = self.slider_list_names.index(self.selected_element.get())
+        self.slider_list_names = ["Album Art", "Song Name", "Artist Name", "Visualiser Position", "Visualiser Size", "Oscilliscope Position"]
 
         # Get the path to the icon file
         if getattr(sys, 'frozen', False):
@@ -37,21 +36,27 @@ class OptionsWindow:
 
         # Define variables to be controlled by sliders
         self.bass_pump = tk.DoubleVar(value=config.getfloat('Customisation', 'BassPump'))
-        self.smoothing_factor = tk.DoubleVar(value=config.getfloat('Customisation', 'smoothing_factor'))
+        self.smoothing_factor = tk.DoubleVar(value=config.getfloat('Customisation', 'SmoothingFactor'))
         self.frame_rate = tk.IntVar(value=config.getint('Customisation', 'FrameRate'))
-        self.media_update_rate = tk.IntVar(value=config.getint('Customisation', 'media_update_rate'))
+        self.media_update_rate = tk.IntVar(value=config.getint('Customisation', 'MediaUpdateRate'))
         self.num_of_bars = tk.IntVar(value=config.getint('Customisation', 'NumOfBars'))
+
         self.album_art_size = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtSize'))
         self.album_art_colour_vibrancy = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtColourVibrancy'))
         self.album_art_flip_interval = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtFlipInterval'))
         self.album_art_flip_duration = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtFlipDuration'))
         self.fade_duration = tk.DoubleVar(value=config.getfloat('Customisation', 'BackgroundFadeDuration'))
+
+        self.oscilloscope_gain = tk.DoubleVar(value=config.getfloat('Customisation', 'OscilloscopeGain'))
+        self.oscilloscope_time_frame = tk.DoubleVar(value=config.getfloat('Customisation', 'OscilloscopeTimeFrame'))
+
         # Array of x/y values
         self.xy_variables = [list(tuple(map(float, config.get('Customisation', 'AlbumArtPosition').split(',')))),
                              list(tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))),
                              list(tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))),
                              list(tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'VisualiserSize').split(','))))]
+                             list(tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))),
+                             list(tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(','))))]
 
         # Variables for position sliders
         self.selected_element = tk.StringVar(value="Album Art")
@@ -60,28 +65,34 @@ class OptionsWindow:
 
         # Create sliders
         # Left
-        self.create_slider("Frame Rate", self.frame_rate, 1, 60, 1, 0.25, 75, "white", ("Helvetica", 14))
-        self.create_slider("Bass Pump", self.bass_pump, 0, 1, 0.1, 0.25, 175, "white", ("Helvetica", 14))
-        self.create_slider("Bars", self.num_of_bars, 10, config.getint('Customisation', 'CHUNK') // 2, 1, 0.25, 275, "white", ("Helvetica", 14))
-        self.create_slider("Smoothing Factor", self.smoothing_factor, 0, 1, 0.025, 0.25, 375, "white", ("Helvetica", 14))
-        self.create_slider("Media Update Rate (seconds)", self.media_update_rate, 1, 10, 1, 0.25, 475, "white", ("Helvetica", 14))
+        self.create_slider("Frame Rate", self.frame_rate, 1, 60, 1, 0.20, 75, "white", ("Helvetica", 14))
+        self.create_slider("Bass Pump", self.bass_pump, 0, 1, 0.1, 0.20, 175, "white", ("Helvetica", 14))
+        self.create_slider("Bars", self.num_of_bars, 10, config.getint('Customisation', 'CHUNK') // 2, 1, 0.20, 275, "white", ("Helvetica", 14))
+        self.create_slider("Smoothing Factor", self.smoothing_factor, 0, 1, 0.025, 0.20, 375, "white", ("Helvetica", 14))
+        self.create_slider("Media Update Rate (seconds)", self.media_update_rate, 1, 10, 1, 0.20, 475, "white", ("Helvetica", 14))
+        # Middle
+        self.create_slider("Album Art Size", self.album_art_size, 0.5, 5, 0.1, 0.50, 75, "white", ("Helvetica", 14))
+        self.create_slider("Colour Vibrancy", self.album_art_colour_vibrancy, 0, 1, 0.05, 0.50, 175, "white", ("Helvetica", 14))
+        self.create_slider("Fade Duration", self.fade_duration, 0.25, 2, 0.25, 0.50, 275, "white", ("Helvetica", 14))
+        self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.50, 375, "white", ("Helvetica", 14))
+        self.create_slider("Album Art Flip Duration", self.album_art_flip_duration, 0, 1, 0.1, 0.50, 475, "white", ("Helvetica", 14))
         # Right
-        self.create_slider("Album Art Size", self.album_art_size, 0.5, 5, 0.1, 0.75, 75, "white", ("Helvetica", 14))
-        self.create_slider("Colour Vibrancy", self.album_art_colour_vibrancy, 0, 1, 0.05, 0.75, 175, "white", ("Helvetica", 14))
-        self.create_slider("Fade Duration", self.fade_duration, 0.25, 2, 0.25, 0.75, 275, "white", ("Helvetica", 14))
-        self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.75, 375, "white", ("Helvetica", 14))
-        self.create_slider("Album Art Flip Duration", self.album_art_flip_duration, 0, 1, 0.1, 0.75, 475, "white", ("Helvetica", 14))
+        self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0.1, 1, 0.1, 0.80, 75, "white", ("Helvetica", 14))
+        self.create_slider("Oscilloscope Time Frame", self.oscilloscope_time_frame, 0, 1, 0.05, 0.80, 175, "white", ("Helvetica", 14))
 
         # Create position sliders
         self.x_slider = self.create_slider("X Position", self.x_position, 0, 1, 0.005, 0.25, 575, "white", ("Helvetica", 14))
         self.y_slider = self.create_slider("Y Position", self.y_position, 0, 1, 0.005, 0.75, 575, "white", ("Helvetica", 14))
 
         # Create buttons to select the element to move
-        self.create_button("Album Art", 0.25, 650)
-        self.create_button("Song Name", 0.5, 650)
-        self.create_button("Artist Name", 0.75, 650)
-        self.create_button("Visualiser Position", 0.25, 700)
-        self.create_button("Visualiser Size", 0.5, 700)
+        # Row 1
+        self.create_button("Album Art", 0.20, 650)
+        self.create_button("Song Name", 0.40, 650)
+        self.create_button("Artist Name", 0.60, 650)
+        # Row 2
+        self.create_button("Visualiser Position", 0.20, 700)
+        self.create_button("Visualiser Size", 0.40, 700)
+        self.create_button("Oscilliscope Position", 0.60, 700)
 
     def create_slider(self, label, variable, from_, to, resolution, horizontal_position, y_position, text_colour, font):
         label_widget = ttk.Label(self.window, text=label, foreground=text_colour, background='black', font=font)
@@ -89,19 +100,6 @@ class OptionsWindow:
         slider = tk.Scale(self.window, from_=from_, to=to, orient='horizontal', variable=variable, 
                            resolution=resolution, length=200, background="black", foreground=text_colour)
         slider.place(relx=horizontal_position, y=y_position, anchor='center')
-    
-    # def create_slider_command(self, label, variable, from_, to, resolution, horizontal_position, y_position, text_colour, font, command):
-    #     label_widget = ttk.Label(self.window, text=label, foreground=text_colour, background='black', font=font)
-    #     label_widget.place(relx=horizontal_position, y=y_position - 40, anchor='center')
-    #     slider = tk.Scale(self.window, from_=from_, to=to, orient='horizontal', variable=variable, 
-    #                        resolution=resolution, length=200, background="black", foreground=text_colour,
-    #                        command=command)
-    #     slider.place(relx=horizontal_position, y=y_position, anchor='center')
-
-    #     return slider
-
-    # def update_value(self):
-    #     self.xy_variables[self.slider_index] = [self.x_position.get(),self.y_position.get()]
 
     def create_button(self, label, horizontal_position, y_position):
         button = ttk.Button(self.window, text=label, command=lambda: self.select_element(label))

@@ -1,13 +1,11 @@
 import requests
 import numpy as np
-import io
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import shutil
 import os
 import threading
 import asyncio
-import base64
 import colorsys
 
 from dotenv import load_dotenv
