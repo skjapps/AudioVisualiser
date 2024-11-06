@@ -1,12 +1,12 @@
 # AudioVisualiser
 A Python (PyGame) based Graphical Audio spectrum visualiser for Windows with Spotify support. Inspired by the [Wallpaper Engine](https://www.wallpaperengine.io/en) wallpaper [Monstercat Visualiser](https://steamcommunity.com/sharedfiles/filedetails/?id=1278092907), but as a standalone app (so i can have it on my work laptop lol). 
 
-## "Installtion"
-There is none! Just go to releases, download the latest, load and enjoy!
-Press "O" for live options, F4 to fullscreen.
-Try changing the config, most of the settings work
-If you don't use spotify, put `media_mode = None` instead to just see the visualiser
-Put GIF backgrounds in a folder named `backgrounds` next to the app to use cool animated backgrounds
+## "Installation"
+There is none! Just go to releases, download the latest (+config), load and enjoy!
+- Press "O" for live options, F4 to fullscreen.
+- Try changing the config, most of the settings work
+- If you don't use spotify, put `media_mode = None` instead to just see the visualiser
+- Put GIF backgrounds in a folder named `backgrounds` next to the app to use cool animated backgrounds
 
 ## Featured Python Libraries
 - Spotipy: Spotify api connections
