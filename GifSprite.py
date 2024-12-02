@@ -2,7 +2,7 @@ import pygame
 from PIL import Image
 
 class GifSprite(pygame.sprite.Sprite):
-    def __init__(self, gif_path, pos, fps=60, background_scale="Fill"):
+    def __init__(self, gif_path, pos, fps=24, background_scale="Fill"):
         super().__init__()
         self._frames = self.load_gif(gif_path)
         self.image = self._frames[0]
@@ -21,7 +21,6 @@ class GifSprite(pygame.sprite.Sprite):
         self._fade_duration = None
         self._fade_in = False
         self._fade_out = False
-        
 
     def load_gif(self, gif_path):
         ret = []
@@ -38,20 +37,22 @@ class GifSprite(pygame.sprite.Sprite):
         return ret
     
     def resize_frames(self, x_stretch, y_stretch):
-        resized_frames = []
-        for frame in self._frames:
-            width = int(frame.get_width() * x_stretch)
-            height = int(frame.get_height() * y_stretch)
+        # Calculate the target width and height based on the first frame
+        width = int(self.image.get_width() * x_stretch)
+        height = int(self.image.get_height() * y_stretch)
+
+        for i, frame in enumerate(self._frames):
             if self.background_scale == "Stretch":
-                if(x_stretch >= y_stretch) :
-                    resized_frame = pygame.transform.scale_by(frame, x_stretch)
+                # Stretch based on the larger scale factor
+                if x_stretch >= y_stretch:
+                    self._frames[i] = pygame.transform.scale_by(frame, x_stretch)
                 else:
-                    resized_frame = pygame.transform.scale_by(frame, y_stretch)
+                    self._frames[i] = pygame.transform.scale_by(frame, y_stretch)
             else:
-                # Fill...
-                resized_frame = pygame.transform.scale(frame, (width, height))
-            resized_frames.append(resized_frame)
-        self._frames = resized_frames
+                # Fill to the calculated width and height
+                self._frames[i] = pygame.transform.scale(frame, (width, height))
+
+        # Update the main image and rect
         self.image = self._frames[0]
         self.rect = self.image.get_rect(topleft=self.pos)
         self.size = self._frames[0].get_size()

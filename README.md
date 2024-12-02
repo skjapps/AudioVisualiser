@@ -9,6 +9,7 @@ If you don't use spotify, put `media_mode = None` instead to just see the visual
 Put GIF backgrounds in a folder named `backgrounds` next to the app to use cool animated backgrounds
 
 ## Featured Python Libraries
+(Latest: Python 3.10)
 - Spotipy: Spotify api connections
 - PyAudioWPatch: Using Windows WASAPI audio capture to loopback and record audio device
 - Pygame: All the graphics for the app

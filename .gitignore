@@ -26,3 +26,6 @@ profiling_stats.txt
 *.pyc
 __pycache__/
 .DS_Store
+
+# temp run shortcut
+run.bat

@@ -52,11 +52,11 @@ class OptionsWindow:
 
         # Array of x/y values
         self.xy_variables = [list(tuple(map(float, config.get('Customisation', 'AlbumArtPosition').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))),
-                             list(tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(','))))]
+                            list(tuple(map(float, config.get('Customisation', 'SongNamePosition').split(',')))),
+                            list(tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))),
+                            list(tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))),
+                            list(tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))),
+                            list(tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(','))))]
 
         # Variables for position sliders
         self.selected_element = tk.StringVar(value="Album Art")
@@ -77,7 +77,7 @@ class OptionsWindow:
         self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.50, 375, "white", ("Helvetica", 14))
         self.create_slider("Album Art Flip Duration", self.album_art_flip_duration, 0, 1, 0.1, 0.50, 475, "white", ("Helvetica", 14))
         # Right
-        self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0.1, 1, 0.1, 0.80, 75, "white", ("Helvetica", 14))
+        self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0.1, 1, 0.025, 0.80, 75, "white", ("Helvetica", 14))
         self.create_slider("Oscilloscope Time Frame", self.oscilloscope_time_frame, 0, 1, 0.05, 0.80, 175, "white", ("Helvetica", 14))
 
         # Create position sliders
@@ -98,7 +98,7 @@ class OptionsWindow:
         label_widget = ttk.Label(self.window, text=label, foreground=text_colour, background='black', font=font)
         label_widget.place(relx=horizontal_position, y=y_position - 40, anchor='center')
         slider = tk.Scale(self.window, from_=from_, to=to, orient='horizontal', variable=variable, 
-                           resolution=resolution, length=200, background="black", foreground=text_colour)
+                            resolution=resolution, length=200, background="black", foreground=text_colour)
         slider.place(relx=horizontal_position, y=y_position, anchor='center')
 
     def create_button(self, label, horizontal_position, y_position):
