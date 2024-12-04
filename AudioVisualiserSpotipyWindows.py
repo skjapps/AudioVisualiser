@@ -18,6 +18,7 @@ import threading
 from GifSprite import GifSprite
 from PyAudioWrapper import PyAudioWrapper
 from MediaInfoWrapper import MediaInfoWrapper
+# from BackgroundManager import BackgroundManager
 from ImageFlipper import ImageFlipper
 from OptionsScreen import OptionsWindow
 from Oscilloscope import Oscilloscope
@@ -32,7 +33,7 @@ from pathlib import Path
 def transparent_on_top():
     hwnd = pygame.display.get_wm_info()["window"]
     win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE,
-                           win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
+                            win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
     # Set window transparency color
     win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(
         *background_colour), 0, win32con.LWA_COLORKEY)
@@ -72,6 +73,8 @@ def open_options():
     # Define a function to open the Tkinter window
     options_window.show()
 
+def getIdleTime():
+    return (win32api.GetTickCount() - win32api.GetLastInputInfo()) / 1000.0
 
 #####################################
 #              Config               #
@@ -101,6 +104,7 @@ OriginalAppResolution = (960, 480)
 
 # Access the settings
 CHUNK = config.getint('Customisation', 'CHUNK')
+sleep_time = config.getfloat('Customisation', 'sleep_time')
 cache_limit = config.getint('Customisation', 'cache_limit')
 media_mode = config.get('Customisation', 'media_mode')
 media_update_rate = config.getint('Customisation', 'MediaUpdateRate')
@@ -202,6 +206,7 @@ if background_style == "GIF":
         background_fps = 30
         backgrounds = load_backgrounds(
             background_folder, background_fps, OriginalAppResolution, background_scale)
+        # backgroundManager = BackgroundManager(OriginalAppResolution)
     except Exception as Error:
         print(Error)
         # Reset style to simple colour
@@ -592,6 +597,11 @@ while running:
     options_window.window.update_idletasks()
     options_window.window.update()
 
+    # Close the app automatically (to allow sleep pc)
+    if sleep_time != 0:
+        if getIdleTime() >= (sleep_time * 60):
+            running = False
+
     # Cap the frame rate
     clock.tick(frame_rate)  # Lock the program to FPS
 
@@ -604,6 +614,7 @@ p.stream.stop_stream()
 p.stream.close()
 # Graphics
 pygame.quit()
+options_window.close()
 
 # Get performance Stats
 if performanceDebug:
@@ -612,4 +623,6 @@ if performanceDebug:
         stats = pstats.Stats(profiler, stream=f)
         stats.sort_stats(pstats.SortKey.TIME)
         stats.print_stats()
-        
+
+# exit fully
+exit()
