@@ -42,7 +42,7 @@ class ImageFlipper:
             self.flipping = True
             self.last_flip_time = current_time
 
-    def draw(self, screen, position):
+    def render(self, screen, position):
         if self.flipping:
             scaled_width = int(self.current_image.get_width() * self.scale_width)
             scaled_height = int(self.current_image.get_height() + (self.current_image.get_height() * self.scale_height * 0.1))

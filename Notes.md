@@ -5,6 +5,7 @@
 - Font selector maybe
 - Spotify fetch to true async vs broken threading.
 - Background loading speedup on launch with true cache of obj
+- Fix the transparent background keying problems
 - .spec build not working, i dunno how it works but idc.
 ## Big changes
 - WindowsRT in WIP will allow any media titles and names to be recognised, allow both spotify and windows modes

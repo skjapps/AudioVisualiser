@@ -17,6 +17,8 @@ import threading
 
 from GifSprite import GifSprite
 from PyAudioWrapper import PyAudioWrapper
+from AudioProcess import AudioProcess
+from VisualiserGraphics import Visualiser
 from MediaInfoWrapper import MediaInfoWrapper
 # from BackgroundManager import BackgroundManager
 from ImageFlipper import ImageFlipper
@@ -29,7 +31,6 @@ from pathlib import Path
 #            Functions              #
 #####################################
 
-
 def transparent_on_top():
     hwnd = pygame.display.get_wm_info()["window"]
     win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE,
@@ -39,7 +40,6 @@ def transparent_on_top():
         *background_colour), 0, win32con.LWA_COLORKEY)
     # NOMOVE|NOSIZE...
     win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, 1 | 2)
-
 
 def load_background(background_path, background_fps, app_resolution, background_scale, backgrounds):
     try:
@@ -67,7 +67,6 @@ def load_backgrounds(background_folder, background_fps, app_resolution, backgrou
         thread.join()
 
     return backgrounds
-
 
 def open_options():
     # Define a function to open the Tkinter window
@@ -122,6 +121,7 @@ visualiser_position = tuple(map(float, config.get(
     'Customisation', 'VisualiserPosition').split(',')))
 visualiser_size = tuple(map(float, config.get(
     'Customisation', 'VisualiserSize').split(',')))
+bar_thickness = config.getfloat('Customisation', 'BarThickness')
 oscilloscope_position = tuple(map(float, config.get(
     'Customisation', 'OscilloscopePosition').split(',')))
 oscilloscope_time_frame = config.getfloat(
@@ -238,11 +238,18 @@ spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
 if media_mode == "Spotify":
     sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(),
                             cache_limit, media_update_rate)
+    # Init default image (placeholder workaround to stop crash when resizing)
+    album_art = pygame.image.load("assets/ico/ico.png")
+    album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+    artist_image = pygame.image.load("assets/ico/ico.png")
+    artist_image = pygame.transform.scale_by(
+        artist_image, ResizedAlbumArtSize)
     if sp.results != None:
         album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-        album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
+        album_art = pygame.transform.smoothscale_by(
+            album_art, ResizedAlbumArtSize)
         artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-        artist_image = pygame.transform.scale_by(
+        artist_image = pygame.transform.smoothscale_by(
             artist_image, ResizedAlbumArtSize)
         sp.updated = False
 
@@ -252,6 +259,9 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(
 #####################################
 #             Main loop             #
 #####################################
+# Objects:
+audio_processor = AudioProcess()
+visualiser = Visualiser()
 # Calculation variables:
 previous_log_fft_data = []
 fft_data = None
@@ -325,6 +335,10 @@ while running:
             w, h = pygame.display.get_surface().get_size()
 
             # Changes for resize
+            # Visualiser Resize
+            ResizedVisualiserSize = visualiser_size * max(w/OriginalAppResolution[0],
+                                                        h/OriginalAppResolution[1])
+            visualiser.resize(ResizedVisualiserSize)
             # Info Font
             # Max instead of min for wider resolutions
             # Min instead of max for "phone" resolutions
@@ -365,44 +379,7 @@ while running:
     event_time = pygame.time.get_ticks()
 
     # AUDIO PROCESSING
-    try:
-        fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
-    except Exception as error:
-        print("An error occurred:", error)
-
-    audio_time_fft = pygame.time.get_ticks()
-
-    # The new maths
-    # Smooth interpretation
-    log_freqs = np.logspace(np.log10(1), np.log10(CHUNK // 2), num=CHUNK // 2)
-    linear_freqs = np.linspace(0, CHUNK // 2, CHUNK // 2)
-    smooth_log_fft_data = np.interp(log_freqs, linear_freqs, fft_data)
-
-    # Create evenly spaced bins for averaging
-    bins = np.linspace(0, len(smooth_log_fft_data), num_of_bars + 1, dtype=int)
-
-    # Averaging the smooth log fft data into bars
-    log_fft_data = np.array(
-        [np.mean(smooth_log_fft_data[bins[i]:bins[i+1]]) for i in range(num_of_bars)])
-
-    # Bass reduction
-    # log10 of a linear 1 to 10, for the right effect.
-    logarithmic_multiplier = np.power(np.log10(np.linspace(
-        1 + 1*bass_pump, 10, len(log_fft_data))), 2*(1-bass_pump))
-    log_fft_data *= logarithmic_multiplier
-
-    # Normalisation of values
-    max_value = max(np.max(log_fft_data), 1e3)
-    if max_value > 0:
-        log_fft_data = log_fft_data / (max_value * 0.8)
-
-
-    if (previous_log_fft_data is not None) & (len(log_fft_data) == len(previous_log_fft_data)):
-        log_fft_data = smoothing_factor * previous_log_fft_data + \
-            (1 - smoothing_factor) * log_fft_data
-    previous_log_fft_data = log_fft_data
-
-    audio_time = pygame.time.get_ticks()
+    log_fft_data, max_value = audio_processor.perform_FFT(CHUNK, num_of_bars, bass_pump, smoothing_factor, p)
 
     # SPOTIFY PROCESSING
     sp.update(pygame.time.get_ticks())
@@ -436,8 +413,6 @@ while running:
     else:
         screen.fill(background_colour)
 
-    graphics_time_background = pygame.time.get_ticks()
-
     # Album Art colouring
     # Colour avg
     scalar = 255 - max(sp.avg_colour_album_art)
@@ -447,26 +422,10 @@ while running:
         sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
     )
 
-    # Draw bars
-    if sp.isPlaying or (max_value > 30):
-        bar_width = w // len(log_fft_data)
-        for i in range(1, len(log_fft_data)):
-            bar_height = log_fft_data[i] * h * 0.5  # Scale to screen height
-            log_fft_data[i] = min(log_fft_data[i], 1)
-            pygame.draw.rect(screen, (
-                (Colour[0] * min(log_fft_data[i], 0.8) +
-                album_art_colour_vibrancy * 50),
-                (Colour[1] * min(log_fft_data[i], 0.8) +
-                album_art_colour_vibrancy * 50),
-                (Colour[2] * min(log_fft_data[i],
-                                0.8) + album_art_colour_vibrancy * 50)
-            ),
-                (i * bar_width + (visualiser_position[0] * w),
-                h - bar_height + (-visualiser_position[1] * h),
-                bar_width * visualiser_size[0],
-                bar_height * visualiser_size[1]))
-
-    graphics_time_bars = pygame.time.get_ticks()
+    # Update the visualiser
+    visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness)
+    # Render Visualiser to main screen
+    screen.blit(visualiser.surface, (w * -visualiser_position[0], h * -visualiser_position[1]))
 
     # Blit the oscilloscope surface onto the main screen
     if oscilloscope_normalisation:
@@ -476,12 +435,9 @@ while running:
     elif not oscilloscope_normalisation:
         oscilloscope.update_oscilloscope(
             p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, colour=Colour)
-    # update_oscilloscope(compress_audio(p.mono_data / 1e7, 0.5, 4), colour=Colour)
     screen.blit(oscilloscope.surface, (w * oscilloscope_position[0],
                                                     h - h * oscilloscope_position[1]))
-
-    # update_oscilloscope(p.mono_data, colour=Colour) # (fallback to this if needed)
-
+    
     # Render Spotify Data
     if sp.results != None:
         # If spotify is being used, show spotify logo
@@ -538,25 +494,11 @@ while running:
                 # Update the flipper
                 flipper.update()
 
-                # Draw the current image
-                flipper.draw(screen, (w * album_art_position[0],
+                # Render the current image
+                flipper.render(screen, (w * album_art_position[0],
                                     h - h * album_art_position[1]))
             except Exception as error:
                 print(error)
-
-    graphics_time = pygame.time.get_ticks()
-
-    clock_time = pygame.time.get_ticks() - start_time
-    if timingDebug & (clock_time > 1000/frame_rate):
-        print("WARN: Underperforming! update took: ", clock_time, "ms \n",
-                "Timings: \n events: ", event_time - start_time,
-                "ms \n audio fft: ", audio_time_fft - event_time,
-                "ms \n audio processing: ", audio_time - audio_time_fft,
-                "ms \n spotify: ", spotify_time - audio_time,
-                "ms \n graphics background: ", graphics_time_background - spotify_time,
-                "ms \n graphics bars: ", graphics_time_bars - graphics_time_background,
-                "ms \n graphics spotify: ", graphics_time - graphics_time_bars,
-                "ms \n")
 
     # Update display
     pygame.display.flip()
