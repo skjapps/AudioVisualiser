@@ -4,7 +4,7 @@ import numpy as np
 import pygame
 
 class Visualiser():
-    def __init__(self, visualiser_width=800, visualiser_height = 600):
+    def __init__(self, visualiser_width=800, visualiser_height=480):
         self.width = visualiser_width  # Width of the oscilloscope display
         self.height = visualiser_height  # Height of the oscilloscope display
 
@@ -31,11 +31,14 @@ class Visualiser():
                     (Colour[2] * min(log_fft_data[i],
                                     0.8) + album_art_colour_vibrancy * 50)
                     ),
-                    # (i * bar_width + (visualiser_position[0] * self.width),
-                    # self.height - bar_height + (-visualiser_position[1] * self.height),
-                    # bar_width * visualiser_size[0],
-                    # bar_height * visualiser_size[1]))
                     (i * bar_width,
                     self.height - bar_height,
                     bar_width * bar_thickness,
                     bar_height))
+    
+    def resize_surface(self, width, height):
+        self.width = width  # Width of the visualiser
+        self.height = height # Height of the visualiser
+
+        # Resize the surface to the new size
+        self.surface = pygame.transform.scale(self.surface, (width, height))

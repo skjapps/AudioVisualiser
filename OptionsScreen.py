@@ -77,7 +77,7 @@ class OptionsWindow:
         self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.50, 375, "white", ("Helvetica", 14))
         self.create_slider("Album Art Flip Duration", self.album_art_flip_duration, 0, 1, 0.1, 0.50, 475, "white", ("Helvetica", 14))
         # Right
-        self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0.1, 1, 0.025, 0.80, 75, "white", ("Helvetica", 14))
+        self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0, 1, 0.025, 0.80, 75, "white", ("Helvetica", 14))
         self.create_slider("Oscilloscope Time Frame", self.oscilloscope_time_frame, 0, 1, 0.05, 0.80, 175, "white", ("Helvetica", 14))
 
         # Create position sliders

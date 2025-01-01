@@ -224,12 +224,6 @@ album_art = None
 artist_image = None
 flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
 
-#####################################
-#            Oscilliscope           #
-#####################################
-# Create oscilloscope
-oscilloscope = Oscilloscope(oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"])
-
 # Spotify #
 # Spotify Branding
 spotify_icon_path = base_path / 'assets/ico/spotify.png'
@@ -261,7 +255,9 @@ flipper = ImageFlipper(album_art, artist_image, flip_interval=(
 #####################################
 # Objects:
 audio_processor = AudioProcess()
-visualiser = Visualiser()
+visualiser = Visualiser(visualiser_width=w, visualiser_height=h)
+oscilloscope = Oscilloscope(oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
+                            oscilloscope_width=w, oscilloscope_height=h)
 # Calculation variables:
 previous_log_fft_data = []
 fft_data = None
@@ -336,9 +332,9 @@ while running:
 
             # Changes for resize
             # Visualiser Resize
-            ResizedVisualiserSize = visualiser_size * max(w/OriginalAppResolution[0],
-                                                        h/OriginalAppResolution[1])
-            visualiser.resize(ResizedVisualiserSize)
+            visualiser.resize_surface(w, h)
+            # Oscilloscope Resize
+            oscilloscope.resize_surface(w, h)
             # Info Font
             # Max instead of min for wider resolutions
             # Min instead of max for "phone" resolutions
@@ -425,7 +421,9 @@ while running:
     # Update the visualiser
     visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness)
     # Render Visualiser to main screen
-    screen.blit(visualiser.surface, (w * -visualiser_position[0], h * -visualiser_position[1]))
+    rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
+                                                int(h - h* visualiser_position[1])))
+    screen.blit(visualiser.surface, rect)
 
     # Blit the oscilloscope surface onto the main screen
     if oscilloscope_normalisation:
@@ -435,8 +433,9 @@ while running:
     elif not oscilloscope_normalisation:
         oscilloscope.update_oscilloscope(
             p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, colour=Colour)
-    screen.blit(oscilloscope.surface, (w * oscilloscope_position[0],
-                                                    h - h * oscilloscope_position[1]))
+    rect = oscilloscope.surface.get_rect(center=(int(w * oscilloscope_position[0]), 
+                                                    int(h - h * oscilloscope_position[1])))
+    screen.blit(oscilloscope.surface, rect)
     
     # Render Spotify Data
     if sp.results != None:
