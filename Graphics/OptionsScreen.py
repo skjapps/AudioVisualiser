@@ -1,10 +1,10 @@
-import pygame
-import tkinter as tk
 import sys
+import configparser
+
+import tkinter as tk
 from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import ttk
-import configparser
 
 class OptionsWindow:
     def __init__(self):
@@ -18,7 +18,7 @@ class OptionsWindow:
             base_path = Path(sys._MEIPASS)
         else:
             base_path = Path(__file__).resolve().parent
-        image_path = base_path / 'assets/img/options.png'
+        image_path = base_path / '../assets/img/options.png'
 
         # Load the background image
         self.background_image = Image.open(image_path)
@@ -32,7 +32,8 @@ class OptionsWindow:
         # Initialize the parser
         config = configparser.ConfigParser()
         # Read the configuration file
-        config.read('config.cfg')
+        config_path = base_path / '../config.cfg'
+        config.read(config_path)
 
         # Define variables to be controlled by sliders
         self.bass_pump = tk.DoubleVar(value=config.getfloat('Customisation', 'BassPump'))

@@ -6,9 +6,11 @@ import shutil
 import os
 import colorsys
 import threading
+import sys
 
 from dotenv import load_dotenv
 from PIL import Image
+from pathlib import Path
 
 # WinRT is now winsdk
 from winsdk.windows.media.control import \
@@ -52,10 +54,16 @@ class MediaInfoWrapper():
         self._sp_last_update = current_tick
         self._lock = threading.Lock()
 
+        # Get base path
+        if getattr(sys, 'frozen', False):
+            self.base_path = Path(sys._MEIPASS)
+        else:
+            self.base_path = Path(__file__).resolve().parent
+
         # Make cache folders
-        if not os.path.exists('cache/'):
-            os.makedirs('cache/')
-            os.makedirs('cache/img')
+        if not os.path.exists(self.base_path / '../cache/'):
+            os.makedirs(self.base_path / '../cache/')
+            os.makedirs(self.base_path / '../cache/img/')
 
         # First time get data
         self.get_data()
@@ -83,7 +91,7 @@ class MediaInfoWrapper():
             try:
                 if self.mode == "Spotify" :
                     self.results = self.sp.currently_playing()
-                    # print(self.results)
+                    # print(self.results['item']['artists'])
                     # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                     if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']):
                         self.changed = True
@@ -91,7 +99,9 @@ class MediaInfoWrapper():
                         self.changed = False
                     # Set media related info
                     self.song_name = self.results['item']['name']
-                    self.artist_name = self.results['item']['artists'][0]['name']
+                    self.artist_name = ""
+                    for artist in self.results['item']['artists'] : self.artist_name += (str(artist['name']) + ", ")
+                    self.artist_name = self.artist_name[:-2]
                     # print(self.results['is_playing'])
                     self.isPlaying = self.results['is_playing']
                     # Cache Album Art
@@ -117,33 +127,36 @@ class MediaInfoWrapper():
     # Also saves the average colour of the current album art to "Colour"
     # get_colour either true or false
     def CacheImage(self, url, get_colour):
-        # Clear Cache above certain size
-        if (self.get_folder_size('cache/') >= (self.cache_limit * 2 ** 20)):
-            # Remove the folder and its contents
-            shutil.rmtree('cache/')
-            
-            # Make the folders
-            if not os.path.exists('cache/'):
-                os.makedirs('cache/')
-                os.makedirs('cache/img')
-
-        # Find the url
-        filename = 'cache/img/' + url.split('/')[-1] + '.jpg'
-        
-        # Load image data and save if needed
         try:
-            ret = open(filename, 'rb').read()
-        except FileNotFoundError:
-            ret = requests.get(url).content
-            with open(filename, 'wb') as handler:
-                handler.write(ret)
+            # Clear Cache above certain size
+            if (self.get_folder_size(self.base_path / '../cache/') >= (self.cache_limit * 2 ** 20)):
+                # Remove the folder and its contents
+                shutil.rmtree(self.base_path / '../cache/')
+                
+                # Make the folders
+                if not os.path.exists(self.base_path / '../cache/'):
+                    os.makedirs(self.base_path / '../cache/')
+                    os.makedirs(self.base_path / '../cache/img')
 
-        # Average image colour 
-        if get_colour:
-            # self.get_vibrant_img_colour(filename)
-            self.get_avg_img_colour(filename)
+            # Find the url
+            filename = self.base_path / ('../cache/img/' + url.split('/')[-1] + '.jpg')
+            
+            # Load image data and save if needed
+            try:
+                ret = open(filename, 'rb').read()
+            except FileNotFoundError:
+                ret = requests.get(url).content
+                with open(filename, 'wb') as handler:
+                    handler.write(ret)
 
-        return ret
+            # Average image colour 
+            if get_colour:
+                # self.get_vibrant_img_colour(filename)
+                self.get_avg_img_colour(filename)
+
+            return ret
+        except Exception as e:
+            print(e)
 
     def get_avg_img_colour(self, filename):
         # Average image colour 
