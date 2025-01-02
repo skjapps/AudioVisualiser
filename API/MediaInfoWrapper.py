@@ -119,6 +119,11 @@ class MediaInfoWrapper():
                 #     asyncio.run(self.get_album_art_win())
                 #     self.get_avg_img_colour(self.album_art_data)
             except:
+                # Return Default Values...
+                # print("return default values \n")
+                self.song_name = "Loading..."
+                self.artist_name = "Play Spotify Music..."
+                self.album_art_data = self.artist_image_data = open(self.base_path / '../assets/ico/ico.png', 'rb').read()
                 self.results = None
                 
             # self.results = None              

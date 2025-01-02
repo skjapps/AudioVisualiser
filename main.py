@@ -68,10 +68,6 @@ def load_backgrounds(background_folder, background_fps, app_resolution, backgrou
 
     return backgrounds
 
-def open_options():
-    # Define a function to open the Tkinter window
-    options_window.show()
-
 def getIdleTime():
     return (win32api.GetTickCount() - win32api.GetLastInputInfo()) / 1000.0
 
@@ -220,37 +216,27 @@ def main():
     options_window = OptionsWindow()
     options_window.close()
 
-    # To initialise variables
-    album_art = None
-    artist_image = None
-    flipper = ImageFlipper(album_art, artist_image, flip_interval=(1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
-
     # Spotify #
     # Spotify Branding
     spotify_icon_path = base_path / 'assets/ico/spotify.png'
     spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
     spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
+    # Load Spotify Data
     if media_mode == "Spotify":
         sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(),
                                 cache_limit, media_update_rate)
-        # Init default image (placeholder workaround to stop crash when resizing)
-        album_art = pygame.image.load("assets/ico/ico.png")
-        album_art = pygame.transform.scale_by(album_art, ResizedAlbumArtSize)
-        artist_image = pygame.image.load("assets/ico/ico.png")
-        artist_image = pygame.transform.scale_by(
+        album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+        album_art = pygame.transform.smoothscale_by(
+            album_art, ResizedAlbumArtSize)
+        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+        artist_image = pygame.transform.smoothscale_by(
             artist_image, ResizedAlbumArtSize)
-        if sp.results != None:
-            album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-            album_art = pygame.transform.smoothscale_by(
-                album_art, ResizedAlbumArtSize)
-            artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-            artist_image = pygame.transform.smoothscale_by(
-                artist_image, ResizedAlbumArtSize)
-            sp.updated = False
+        sp.updated = False # Need to fix logic here...
 
     # Create an ImageFlipper instance
     flipper = ImageFlipper(album_art, artist_image, flip_interval=(
         1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
+    
     #####################################
     #             Main loop             #
     #####################################
@@ -285,7 +271,7 @@ def main():
                 if event.key == pygame.K_q:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                 if event.key == pygame.K_o:
-                    open_options()
+                    options_window.show()
                 if event.key == pygame.K_g:
                     oscilloscope_normalisation = not oscilloscope_normalisation
                 if event.key == pygame.K_LEFT:
@@ -348,14 +334,13 @@ def main():
                 font_song_name = pygame.font.SysFont(font, ResizedSongNameFontSize)
                 font_artist_name = pygame.font.SysFont(font, ResizedArtistNameFontSize)
                 # Album art
-                if sp.results != None:
-                    album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-                    album_art = pygame.transform.scale_by(
-                        album_art, ResizedAlbumArtSize)
-                    artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-                    artist_image = pygame.transform.scale_by(
-                        artist_image, ResizedAlbumArtSize)
-                    flipper.change_images(album_art, artist_image)
+                album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+                album_art = pygame.transform.scale_by(
+                    album_art, ResizedAlbumArtSize)
+                artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                artist_image = pygame.transform.scale_by(
+                    artist_image, ResizedAlbumArtSize)
+                flipper.change_images(album_art, artist_image)
                 # Background
                 if background_style == "GIF":
                     threads = []
@@ -380,7 +365,7 @@ def main():
 
         # SPOTIFY PROCESSING
         sp.update(pygame.time.get_ticks())
-        if sp.updated & (sp.results != None):
+        if sp.updated:
             try:
                 album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
                 album_art = pygame.transform.smoothscale_by(
@@ -439,66 +424,65 @@ def main():
         screen.blit(oscilloscope.surface, rect)
         
         # Render Spotify Data
-        if sp.results != None:
-            # If spotify is being used, show spotify logo
-            if media_mode == "Spotify":
-                screen.blit(spotify_icon, (0,
-                                            0))
-            # When data changes
-            if sp.changed:
-                if random_font_swap:
-                    font = random.choice(available_fonts)
-                    swap_font = True
-                if background_style == "GIF":
-                    # change background with fade when song changed...
-                    if (len(backgrounds) > 1):
-                        backgrounds[background_index].start_fade_out(
-                            background_fade_duration * 1000)
-                        backgrounds[(background_index + 1) % len(backgrounds)
-                                    ].start_fade_in(background_fade_duration * 1000)
-                        background_index = (background_index + 1) % len(backgrounds)
-                sp.changed = False
+        # If spotify is being used, show spotify logo
+        if media_mode == "Spotify":
+            screen.blit(spotify_icon, (0,
+                                        0))
+        # When data changes
+        if sp.changed:
+            if random_font_swap:
+                font = random.choice(available_fonts)
+                swap_font = True
+            if background_style == "GIF":
+                # change background with fade when song changed...
+                if (len(backgrounds) > 1):
+                    backgrounds[background_index].start_fade_out(
+                        background_fade_duration * 1000)
+                    backgrounds[(background_index + 1) % len(backgrounds)
+                                ].start_fade_in(background_fade_duration * 1000)
+                    background_index = (background_index + 1) % len(backgrounds)
+            sp.changed = False
 
-            if swap_font:
-                font_song_name = pygame.font.SysFont(
-                    font, ResizedSongNameFontSize, True)
-                font_artist_name = pygame.font.SysFont(
-                    font, ResizedArtistNameFontSize, True)
-                swap_font = False
+        if swap_font:
+            font_song_name = pygame.font.SysFont(
+                font, ResizedSongNameFontSize, True)
+            font_artist_name = pygame.font.SysFont(
+                font, ResizedArtistNameFontSize, True)
+            swap_font = False
 
-            # Render song name
-            if song_name_short:
-                song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
-            else:
-                song_name_text = sp.song_name
-            song_name = font_song_name.render(song_name_text,
+        # Render song name
+        if song_name_short:
+            song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
+        else:
+            song_name_text = sp.song_name
+        song_name = font_song_name.render(song_name_text,
+                                            True, Colour)
+        # Display song name
+        screen.blit(song_name, (w * song_name_position[0],
+                                h - h * song_name_position[1]))
+
+        # Render artist name
+        artist_name = font_artist_name.render(sp.artist_name,
                                                 True, Colour)
-            # Display song name
-            screen.blit(song_name, (w * song_name_position[0],
-                                    h - h * song_name_position[1]))
+        # Display artist name
+        screen.blit(artist_name, (w * artist_name_position[0],
+                                h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
-            # Render artist name
-            artist_name = font_artist_name.render(sp.artist_name,
-                                                    True, Colour)
-            # Display artist name
-            screen.blit(artist_name, (w * artist_name_position[0],
-                                    h - h * artist_name_position[1] + ResizedSongNameFontSize))
+        # Display album art
+        if (album_art != None) or (artist_image != None):
+            try:
+                # Incase size changed
+                ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
+                                                        h/OriginalAppResolution[1]) * 0.3
 
-            # Display album art
-            if (album_art != None) or (artist_image != None):
-                try:
-                    # Incase size changed
-                    ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
-                                                            h/OriginalAppResolution[1]) * 0.3
+                # Update the flipper
+                flipper.update()
 
-                    # Update the flipper
-                    flipper.update()
-
-                    # Render the current image
-                    flipper.render(screen, (w * album_art_position[0],
-                                        h - h * album_art_position[1]))
-                except Exception as error:
-                    print(error)
+                # Render the current image
+                flipper.render(screen, (w * album_art_position[0],
+                                    h - h * album_art_position[1]))
+            except Exception as error:
+                print(error)
 
         # Update display
         pygame.display.flip()

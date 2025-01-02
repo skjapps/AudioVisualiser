@@ -7,3 +7,4 @@ pyaudiowpatch
 winsdk
 pywin32
 python-dotenv
+pyinstaller
