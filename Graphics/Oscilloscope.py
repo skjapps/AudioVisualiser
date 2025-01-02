@@ -5,9 +5,9 @@ import numpy as np
 #            Oscilliscope           #
 #####################################
 class Oscilloscope():
-    def __init__(self, oscilloscope_time_frame, oscilloscope_gain, sample_rate, oscilloscope_width=400, oscilloscope_height = 160):
-        self.width = oscilloscope_width  # Width of the oscilloscope display
-        self.height = oscilloscope_height  # Height of the oscilloscope display
+    def __init__(self, oscilloscope_size, oscilloscope_time_frame, oscilloscope_gain, sample_rate, oscilloscope_width=400, oscilloscope_height = 160):
+        self.width = int(oscilloscope_width * oscilloscope_size[0])  # Width of the oscilloscope display
+        self.height = int(oscilloscope_height * oscilloscope_size[1]) # Height of the oscilloscope display
         self.gain = oscilloscope_gain
         self.max_samples = int(oscilloscope_time_frame * sample_rate)  # Maximum number of samples to store
         self._accumulated_audio_data = np.zeros(self.max_samples)  # Zero array for accumulated audio data
@@ -79,9 +79,9 @@ class Oscilloscope():
                 0.8) + album_art_colour_vibrancy * 50)
                 ), (x, self.height // 2), (x, self.height - y), width=2)
 
-    def resize_surface(self, width, height):
-        self.width = width  # Width of the oscilloscope display
-        self.height = height # Height of the oscilloscope display
+    def resize_surface(self, oscilloscope_size, width, height):
+        self.width = int(width * oscilloscope_size[0])  # Width of the oscilloscope display
+        self.height = int(height * oscilloscope_size[1]) # Height of the oscilloscope display
 
         # Resize the surface to the new size
         self.surface = pygame.transform.scale(self.surface, (width, height))

@@ -11,7 +11,8 @@ class OptionsWindow:
         self.window = tk.Tk()
         self.window.title("Options")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.slider_list_names = ["Album Art", "Song Name", "Artist Name", "Visualiser Position", "Visualiser Size", "Oscilliscope Position"]
+        self.slider_list_names = ["Album Art", "Song Name", "Artist Name", "Visualiser Position", 
+                                    "Visualiser Size", "Oscilloscope Position", "Oscilloscope Size"]
 
         # Get the path to the icon file
         if getattr(sys, 'frozen', False):
@@ -57,7 +58,8 @@ class OptionsWindow:
                             list(tuple(map(float, config.get('Customisation', 'ArtistNamePosition').split(',')))),
                             list(tuple(map(float, config.get('Customisation', 'VisualiserPosition').split(',')))),
                             list(tuple(map(float, config.get('Customisation', 'VisualiserSize').split(',')))),
-                            list(tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(','))))]
+                            list(tuple(map(float, config.get('Customisation', 'OscilloscopePosition').split(',')))),
+                            list(tuple(map(float, config.get('Customisation', 'OscilloscopeSize').split(','))))]
 
         # Variables for position sliders
         self.selected_element = tk.StringVar(value="Album Art")
@@ -92,8 +94,9 @@ class OptionsWindow:
         self.create_button("Artist Name", 0.60, 650)
         # Row 2
         self.create_button("Visualiser Position", 0.20, 700)
-        self.create_button("Visualiser Size", 0.40, 700)
-        self.create_button("Oscilliscope Position", 0.60, 700)
+        self.create_button("Visualiser Size", 0.35, 700)
+        self.create_button("Oscilloscope Position", 0.50, 700)
+        self.create_button("Oscilloscope Size", 0.65, 700)
 
     def create_slider(self, label, variable, from_, to, resolution, horizontal_position, y_position, text_colour, font):
         label_widget = ttk.Label(self.window, text=label, foreground=text_colour, background='black', font=font)
@@ -127,3 +130,4 @@ class OptionsWindow:
 # options_window = OptionsWindow()
 # options_window.show()
 # tk.mainloop()
+

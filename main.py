@@ -121,6 +121,8 @@ def main():
     bar_thickness = config.getfloat('Customisation', 'BarThickness')
     oscilloscope_position = tuple(map(float, config.get(
         'Customisation', 'OscilloscopePosition').split(',')))
+    oscilloscope_size = tuple(map(float, config.get(
+        'Customisation', 'OscilloscopeSize').split(',')))
     oscilloscope_time_frame = config.getfloat(
         'Customisation', 'OscilloscopeTimeFrame')
     oscilloscope_gain = config.getfloat('Customisation', 'OscilloscopeGain')
@@ -242,8 +244,8 @@ def main():
     #####################################
     # Objects:
     audio_processor = AudioProcess()
-    visualiser = Visualiser(visualiser_width=w, visualiser_height=h)
-    oscilloscope = Oscilloscope(oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
+    visualiser = Visualiser(visualiser_size, visualiser_width=w, visualiser_height=h)
+    oscilloscope = Oscilloscope(oscilloscope_size, oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
                                 oscilloscope_width=w, oscilloscope_height=h)
     # Calculation variables:
     previous_log_fft_data = []
@@ -319,9 +321,9 @@ def main():
 
                 # Changes for resize
                 # Visualiser Resize
-                visualiser.resize_surface(w, h)
+                visualiser.resize_surface(visualiser_size, w, h)
                 # Oscilloscope Resize
-                oscilloscope.resize_surface(w, h)
+                oscilloscope.resize_surface(oscilloscope_size, w, h)
                 # Info Font
                 # Max instead of min for wider resolutions
                 # Min instead of max for "phone" resolutions
@@ -409,7 +411,9 @@ def main():
         # Render Visualiser to main screen
         rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
                                                     int(h - h* visualiser_position[1])))
+        screen.blit(pygame.transform.rotate(visualiser.surface, 180), rect)
         screen.blit(visualiser.surface, rect)
+        
 
         # Blit the oscilloscope surface onto the main screen
         if oscilloscope_normalisation:
@@ -515,9 +519,14 @@ def main():
         if options_window.selected_element.get() == "Visualiser Size":
             visualiser_size = (options_window.x_position.get(),
                                 options_window.y_position.get())
-        if options_window.selected_element.get() == "Oscilliscope Position":
+            visualiser.resize_surface(visualiser_size, w, h)
+        if options_window.selected_element.get() == "Oscilloscope Position":
             oscilloscope_position = (
                 options_window.x_position.get(), options_window.y_position.get())
+        if options_window.selected_element.get() == "Oscilloscope Size":
+            oscilloscope_size = (options_window.x_position.get(),
+                                options_window.y_position.get())
+            oscilloscope.resize_surface(oscilloscope_size, w, h)
 
         # Periodically call the Tkinter event loop
         options_window.window.update_idletasks()

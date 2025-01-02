@@ -4,9 +4,9 @@ import numpy as np
 import pygame
 
 class Visualiser():
-    def __init__(self, visualiser_width=800, visualiser_height=480):
-        self.width = visualiser_width  # Width of the oscilloscope display
-        self.height = visualiser_height  # Height of the oscilloscope display
+    def __init__(self, visualiser_size, visualiser_width=800, visualiser_height=480):
+        self.width = int(visualiser_width * visualiser_size[0])  # Width of the oscilloscope display
+        self.height = int(visualiser_height * visualiser_size[1])  # Height of the oscilloscope display
 
         # Create visualiser surface
         self.surface = pygame.Surface((self.width, self.height))
@@ -36,9 +36,9 @@ class Visualiser():
                     bar_width * bar_thickness,
                     bar_height))
     
-    def resize_surface(self, width, height):
-        self.width = width  # Width of the visualiser
-        self.height = height # Height of the visualiser
+    def resize_surface(self, visualiser_size, width, height):
+        self.width = int(width * visualiser_size[0])  # Width of the oscilloscope display
+        self.height = int(height * visualiser_size[1])  # Height of the oscilloscope display
 
         # Resize the surface to the new size
         self.surface = pygame.transform.scale(self.surface, (width, height))
