@@ -84,7 +84,6 @@ def main():
     #               Debug               #
     #####################################
     performanceDebug = config.getboolean('Customisation', 'performanceDebug')
-    timingDebug = False
 
     profiler = cProfile.Profile()
     if performanceDebug:
@@ -261,8 +260,6 @@ def main():
     scalar = 0  # colour scaling
     while running:
 
-        start_time = pygame.time.get_ticks()
-
         # Pygame Events (Quit, Window Resize)
         for event in pygame.event.get():
             # Quit
@@ -360,7 +357,6 @@ def main():
                 # win32gui.UpdateLayeredWindow(hwnd, None, None, None, None, None, win32api.RGB(*background_colour), None, win32con.LWA_COLORKEY)
                 # if media_mode == "Spotify":
                 #     spotify_icon = pygame.transform.scale_by(spotify_icon, w/OriginalAppResolution[0])
-        event_time = pygame.time.get_ticks()
 
         # AUDIO PROCESSING
         log_fft_data, max_value = audio_processor.perform_FFT(CHUNK, num_of_bars, bass_pump, smoothing_factor, p)
@@ -379,8 +375,6 @@ def main():
                 sp.updated = False
             except Exception as error:
                 print(error, "\n\n")
-
-        spotify_time = pygame.time.get_ticks()
 
         # GRAPHICS PROCESSING
 
@@ -410,10 +404,10 @@ def main():
         visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness)
         # Render Visualiser to main screen
         rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
-                                                    int(h - h* visualiser_position[1])))
-        screen.blit(pygame.transform.rotate(visualiser.surface, 180), rect)
-        screen.blit(visualiser.surface, rect)
-        
+                                                    int(h - h * visualiser_position[1])))
+        screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
+        screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+        # screen.blit(visualiser.surface, rect)
 
         # Blit the oscilloscope surface onto the main screen
         if oscilloscope_normalisation:

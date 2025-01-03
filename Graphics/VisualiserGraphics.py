@@ -37,8 +37,8 @@ class Visualiser():
                     bar_height))
     
     def resize_surface(self, visualiser_size, width, height):
-        self.width = int(width * visualiser_size[0])  # Width of the oscilloscope display
-        self.height = int(height * visualiser_size[1])  # Height of the oscilloscope display
+        self.width = int(width * visualiser_size[0])  # Width of the visualiser display
+        self.height = int(height * visualiser_size[1])  # Height of the visualiser display
 
         # Resize the surface to the new size
         self.surface = pygame.transform.scale(self.surface, (width, height))
