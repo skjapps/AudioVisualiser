@@ -74,7 +74,7 @@ class OptionsWindow:
         self.create_slider("Smoothing Factor", self.smoothing_factor, 0, 1, 0.025, 0.20, 375, "white", ("Helvetica", 14))
         self.create_slider("Media Update Rate (seconds)", self.media_update_rate, 1, 10, 1, 0.20, 475, "white", ("Helvetica", 14))
         # Middle
-        self.create_slider("Album Art Size", self.album_art_size, 0.5, 5, 0.1, 0.50, 75, "white", ("Helvetica", 14))
+        self.create_slider("Album Art Size", self.album_art_size, 0.5, 5, 0.05, 0.50, 75, "white", ("Helvetica", 14))
         self.create_slider("Colour Vibrancy", self.album_art_colour_vibrancy, 0, 1, 0.05, 0.50, 175, "white", ("Helvetica", 14))
         self.create_slider("Fade Duration", self.fade_duration, 0.25, 2, 0.25, 0.50, 275, "white", ("Helvetica", 14))
         self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.50, 375, "white", ("Helvetica", 14))

@@ -41,7 +41,7 @@ class Oscilloscope():
         """
         return data - np.mean(data)
 
-    def update_oscilloscope(self, audio_data, album_art_colour_vibrancy=1, colour=(0, 255, 0)):
+    def update_oscilloscope(self, audio_data, album_art_colour_vibrancy=1, colour=(0, 255, 0), mode="dc"):
         """Update the oscilloscope with the given audio data and album art colour vibrancy.
 
         Args:
@@ -75,15 +75,28 @@ class Oscilloscope():
                 if sample_index < self.current_length:
                     y = int((scaled_data[sample_index] + 1) * (self.height / 2))
                     normalized_height = abs(self.height // 2 - y) / (self.height // 2) * 3
-                    # Draw line
-                    pygame.draw.line(self.surface, (
-                    (colour[0] * min(normalized_height, 0.8) +
-                    album_art_colour_vibrancy * 50),
-                    (colour[1] * min(normalized_height, 0.8) +
-                    album_art_colour_vibrancy * 50),
-                    (colour[2] * min(normalized_height, 0.8) + 
-                    album_art_colour_vibrancy * 50)), 
-                    (x, y), (x, self.height - y), width=2)
+                    if (mode == "dc"):
+                        # Draw line
+                        pygame.draw.line(self.surface, (
+                        (colour[0] * min(normalized_height, 0.8) +
+                        album_art_colour_vibrancy * 50),
+                        (colour[1] * min(normalized_height, 0.8) +
+                        album_art_colour_vibrancy * 50),
+                        (colour[2] * min(normalized_height, 0.8) + 
+                        album_art_colour_vibrancy * 50)), 
+                        (x, y), (x, self.height - y), width=2)
+                    # True AC Oscilloscope (more ? accurate)
+                    if (mode == "ac"):
+                        pygame.draw.line(self.surface, (
+                        (colour[0] * min(normalized_height, 0.8) +
+                        album_art_colour_vibrancy * 50),
+                        (colour[1] * min(normalized_height, 0.8) +
+                        album_art_colour_vibrancy * 50),
+                        (colour[2] * min(normalized_height,
+                        0.8) + album_art_colour_vibrancy * 50)
+                        ), (x, self.height // 2), (x, y), width=2)
+                    
+                    
 
     def resize_surface(self, oscilloscope_size, width, height):
         self.width = int(width * oscilloscope_size[0])  # Width of the oscilloscope display

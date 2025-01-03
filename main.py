@@ -118,6 +118,7 @@ def main():
     visualiser_size = tuple(map(float, config.get(
         'Customisation', 'VisualiserSize').split(',')))
     bar_thickness = config.getfloat('Customisation', 'BarThickness')
+    
     oscilloscope_position = tuple(map(float, config.get(
         'Customisation', 'OscilloscopePosition').split(',')))
     oscilloscope_size = tuple(map(float, config.get(
@@ -126,6 +127,8 @@ def main():
         'Customisation', 'OscilloscopeTimeFrame')
     oscilloscope_gain = config.getfloat('Customisation', 'OscilloscopeGain')
     oscilloscope_normalisation = config.getboolean('Customisation', 'OscilloscopeNormalisation')
+    oscilloscope_acdc = config.get('Customisation', 'OscilloscopeACDC')
+
     no_frame = config.getboolean('Customisation', 'NOFRAME')
     fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
     background_scale = config.get('Customisation', 'BackgroundScale')
@@ -410,13 +413,21 @@ def main():
         # screen.blit(visualiser.surface, rect)
 
         # Blit the oscilloscope surface onto the main screen
+        # if oscilloscope_normalisation:
+        #     oscilloscope.update_oscilloscope(
+        #         p.mono_data / max(np.max(p.mono_data), 1e3), album_art_colour_vibrancy=album_art_colour_vibrancy, 
+        #                                                     colour=Colour)
+        # elif not oscilloscope_normalisation:
+        #     oscilloscope.update_oscilloscope(
+        #         p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, colour=Colour)
         if oscilloscope_normalisation:
             oscilloscope.update_oscilloscope(
                 p.mono_data / max(np.max(p.mono_data), 1e3), album_art_colour_vibrancy=album_art_colour_vibrancy, 
-                                                            colour=Colour)
+                                                            colour=Colour, mode=oscilloscope_acdc)
         elif not oscilloscope_normalisation:
             oscilloscope.update_oscilloscope(
-                p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, colour=Colour)
+                p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, 
+                                                        colour=Colour, mode=oscilloscope_acdc)
         rect = oscilloscope.surface.get_rect(center=(int(w * oscilloscope_position[0]), 
                                                         int(h - h * oscilloscope_position[1])))
         screen.blit(oscilloscope.surface, rect)
