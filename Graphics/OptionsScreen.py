@@ -89,14 +89,14 @@ class OptionsWindow:
 
         # Create buttons to select the element to move
         # Row 1
-        self.create_button("Album Art", 0.20, 650)
-        self.create_button("Song Name", 0.40, 650)
-        self.create_button("Artist Name", 0.60, 650)
+        self.create_button("Album Art", 0.25, 650)
+        self.create_button("Song Name", 0.50, 650)
+        self.create_button("Artist Name", 0.75, 650)
         # Row 2
         self.create_button("Visualiser Position", 0.20, 700)
-        self.create_button("Visualiser Size", 0.35, 700)
-        self.create_button("Oscilloscope Position", 0.50, 700)
-        self.create_button("Oscilloscope Size", 0.65, 700)
+        self.create_button("Visualiser Size", 0.40, 700)
+        self.create_button("Oscilloscope Position", 0.60, 700)
+        self.create_button("Oscilloscope Size", 0.80, 700)
 
     def create_slider(self, label, variable, from_, to, resolution, horizontal_position, y_position, text_colour, font):
         label_widget = ttk.Label(self.window, text=label, foreground=text_colour, background='black', font=font)

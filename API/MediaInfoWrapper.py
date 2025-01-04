@@ -91,7 +91,7 @@ class MediaInfoWrapper():
             try:
                 if self.mode == "Spotify" :
                     self.results = self.sp.currently_playing()
-                    # print(self.results['item']['artists'])
+                    # print(self.results)
                     # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                     if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']):
                         self.changed = True
@@ -107,6 +107,7 @@ class MediaInfoWrapper():
                     # Cache Album Art
                     self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
                     artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
+                    # print(artist_info)
                     self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
                     # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
                 # elif self.mode == "winsdk" :

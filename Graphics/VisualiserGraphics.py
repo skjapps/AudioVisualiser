@@ -1,7 +1,5 @@
 import pygame
-
 import numpy as np
-import pygame
 
 class Visualiser():
     def __init__(self, visualiser_size, visualiser_width=800, visualiser_height=480):

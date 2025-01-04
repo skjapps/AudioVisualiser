@@ -16,14 +16,15 @@ import webbrowser
 import threading
 
 from Graphics.GifSprite import GifSprite
-from Audio.PyAudioWrapper import PyAudioWrapper
-from Audio.AudioProcess import AudioProcess
 from Graphics.VisualiserGraphics import Visualiser
-from API.MediaInfoWrapper import MediaInfoWrapper
 # from BackgroundManager import BackgroundManager
 from Graphics.ImageFlipper import ImageFlipper
 from Graphics.OptionsScreen import OptionsWindow
 from Graphics.Oscilloscope import Oscilloscope
+from Graphics.HUD import HUD
+from API.MediaInfoWrapper import MediaInfoWrapper
+from Audio.PyAudioWrapper import PyAudioWrapper
+from Audio.AudioProcess import AudioProcess
 
 from pathlib import Path
 
@@ -112,13 +113,14 @@ def main():
     background_colour = tuple(
         map(int, config.get('Customisation', 'BackgroundColour').split(',')))
     background_fps = config.getint('Customisation', 'BackgroundFPS')
-    colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
+    Colour = tuple(map(int, config.get('Customisation', 'Colour').split(',')))
     visualiser_position = tuple(map(float, config.get(
         'Customisation', 'VisualiserPosition').split(',')))
     visualiser_size = tuple(map(float, config.get(
         'Customisation', 'VisualiserSize').split(',')))
+    visualiser_image = config.get('Customisation', 'VisualiserImage')
     bar_thickness = config.getfloat('Customisation', 'BarThickness')
-    
+
     oscilloscope_position = tuple(map(float, config.get(
         'Customisation', 'OscilloscopePosition').split(',')))
     oscilloscope_size = tuple(map(float, config.get(
@@ -249,9 +251,7 @@ def main():
     visualiser = Visualiser(visualiser_size, visualiser_width=w, visualiser_height=h)
     oscilloscope = Oscilloscope(oscilloscope_size, oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
                                 oscilloscope_width=w, oscilloscope_height=h)
-    # Calculation variables:
-    previous_log_fft_data = []
-    fft_data = None
+    hud = HUD((w,h))
     # Program variables:
     running = True
     song_name_text = ""
@@ -261,6 +261,10 @@ def main():
     swap_font = False  # Flag to swap font when pressed left/right
     change_background = False  # Flag to change background when pressed up/down
     scalar = 0  # colour scaling
+    # rainbow visualiser mask
+    rainbow_image = pygame.transform.scale(pygame.transform.gaussian_blur((pygame.image.load(('assets/img/rainbow.jpg')).convert_alpha()), 5), (w,h))
+    test_counter_1 = 0
+    # Main Loop
     while running:
 
         # Pygame Events (Quit, Window Resize)
@@ -396,30 +400,49 @@ def main():
 
         # Album Art colouring
         # Colour avg
-        scalar = 255 - max(sp.avg_colour_album_art)
-        Colour = (
-            sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
-            sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy,
-            sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
-        )
+        if album_art_colouring:
+            scalar = 255 - max(sp.avg_colour_album_art)
+            Colour = (
+                sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
+                sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy,
+                sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
+            )
 
         # Update the visualiser
         visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness)
         # Render Visualiser to main screen
         rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
                                                     int(h - h * visualiser_position[1])))
-        screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
-        screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
-        # screen.blit(visualiser.surface, rect)
+        
+        if visualiser_image == "None":
+            screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
+            screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+        else:
+            filter = pygame.Surface((w,h))
+            # Make masks from the visualiser(s)
+            mask1 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, True, False))
+            mask2 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, False, True))
+            # Make the Rainbow Filter
+            test_counter_1 = ((test_counter_1 + 1) % frame_rate)
+            if visualiser_image == "Rainbow": 
+                image_scaled = pygame.transform.smoothscale_by(rainbow_image, 1 + (test_counter_1 / frame_rate))
+            elif visualiser_image == "Artist":
+                image_scaled = pygame.transform.smoothscale_by(artist_image, 
+                                                            max(w//artist_image.get_width(), h//artist_image.get_height()))
+            filter.blit(image_scaled, image_scaled.get_rect(center=(rainbow_image.get_width() // 2, 
+                                                                        rainbow_image.get_height() // 2)))
+
+            # Combine the visualiser masks
+            mask1.draw(mask2, (0,0))
+            mask_surface = mask1.to_surface(setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0))
+            # Apply mask to filter
+            filter.blit(mask_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            filter.set_colorkey((0,0,0))
+            # Blit Filter with visualisers to screen
+            screen.blit(filter, (0, 0))
+        
 
         # Blit the oscilloscope surface onto the main screen
-        # if oscilloscope_normalisation:
-        #     oscilloscope.update_oscilloscope(
-        #         p.mono_data / max(np.max(p.mono_data), 1e3), album_art_colour_vibrancy=album_art_colour_vibrancy, 
-        #                                                     colour=Colour)
-        # elif not oscilloscope_normalisation:
-        #     oscilloscope.update_oscilloscope(
-        #         p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, colour=Colour)
         if oscilloscope_normalisation:
             oscilloscope.update_oscilloscope(
                 p.mono_data / max(np.max(p.mono_data), 1e3), album_art_colour_vibrancy=album_art_colour_vibrancy, 
@@ -434,9 +457,9 @@ def main():
         
         # Render Spotify Data
         # If spotify is being used, show spotify logo
-        if media_mode == "Spotify":
-            screen.blit(spotify_icon, (0,
-                                        0))
+        # if media_mode == "Spotify":
+        #     screen.blit(spotify_icon, (w - spotify_icon.get_width(),
+        #                                 0))
         # When data changes
         if sp.changed:
             if random_font_swap:
@@ -492,6 +515,14 @@ def main():
                                     h - h * album_art_position[1]))
             except Exception as error:
                 print(error)
+
+        # Update and draw HUD
+        hud.update(media_mode)
+        screen.blit(hud, (0,0))
+
+        # Show FPS...
+        fps = font_artist_name.render(str(int(clock.get_fps())), True, Colour)
+        screen.blit(fps, (0,0))
 
         # Update display
         pygame.display.flip()
