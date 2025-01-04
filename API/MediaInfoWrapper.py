@@ -80,6 +80,8 @@ class MediaInfoWrapper():
             # Start a new thread to get data
             threading.Thread(target=self.get_data).start()
             # self.get_data()
+
+            print("Updated spotify data \n")
             
             self.updated = True
         else:

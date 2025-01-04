@@ -1,4 +1,4 @@
-import numpy as np
+import math
 import pygame
 import io
 import os
@@ -14,6 +14,7 @@ import win32con
 import win32gui
 import webbrowser
 import threading
+import numpy as np
 
 from Graphics.GifSprite import GifSprite
 from Graphics.VisualiserGraphics import Visualiser
@@ -196,8 +197,8 @@ def main():
     clock = pygame.time.Clock()
     # Fonts setup
     available_fonts = pygame.font.get_fonts()
-    font_song_name = pygame.font.SysFont('Arial', song_name_font_size, True)
-    font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size, True)
+    font_song_name = pygame.font.SysFont('Arial', song_name_font_size)
+    font_artist_name = pygame.font.SysFont('Arial', artist_name_font_size)
 
     # Create layered window
     if background_style == "Transparent":
@@ -262,7 +263,9 @@ def main():
     change_background = False  # Flag to change background when pressed up/down
     scalar = 0  # colour scaling
     # rainbow visualiser mask
-    rainbow_image = pygame.transform.scale(pygame.transform.gaussian_blur((pygame.image.load(('assets/img/rainbow.jpg')).convert_alpha()), 5), (w,h))
+    rainbow_image = pygame.transform.scale(
+                    pygame.transform.gaussian_blur(
+                    (pygame.image.load(('assets/img/rainbow.jpg')).convert_alpha()), 5), (w,h))
     test_counter_1 = 0
     # Main Loop
     while running:
@@ -326,8 +329,12 @@ def main():
                 # Changes for resize
                 # Visualiser Resize
                 visualiser.resize_surface(visualiser_size, w, h)
+                # Resize Rainbow image
+                rainbow_image = pygame.transform.scale(rainbow_image, (w, h))
                 # Oscilloscope Resize
                 oscilloscope.resize_surface(oscilloscope_size, w, h)
+                # HUD Resize
+                hud.resize_surface((w, h))
                 # Info Font
                 # Max instead of min for wider resolutions
                 # Min instead of max for "phone" resolutions
@@ -335,7 +342,7 @@ def main():
                                                                         h/OriginalAppResolution[1]))
                 ResizedArtistNameFontSize = int(artist_name_font_size * min(w/OriginalAppResolution[0],
                                                                             h/OriginalAppResolution[1]))
-                ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
+                ResizedAlbumArtSize = album_art_size * min(w/OriginalAppResolution[0],
                                                         h/OriginalAppResolution[1]) * 0.3
                 font_song_name = pygame.font.SysFont(font, ResizedSongNameFontSize)
                 font_artist_name = pygame.font.SysFont(font, ResizedArtistNameFontSize)
@@ -423,9 +430,10 @@ def main():
             mask1 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, True, False))
             mask2 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, False, True))
             # Make the Rainbow Filter
-            test_counter_1 = ((test_counter_1 + 1) % frame_rate)
+            test_counter_1 = ((test_counter_1 + 1) % (frame_rate * 2))
+            test_scalar_1 = (math.sin(math.pi * 2 * (test_counter_1 / (frame_rate * 2)))) / 5
             if visualiser_image == "Rainbow": 
-                image_scaled = pygame.transform.smoothscale_by(rainbow_image, 1 + (test_counter_1 / frame_rate))
+                image_scaled = pygame.transform.scale_by(rainbow_image, 1.2 + test_scalar_1)
             elif visualiser_image == "Artist":
                 image_scaled = pygame.transform.smoothscale_by(artist_image, 
                                                             max(w//artist_image.get_width(), h//artist_image.get_height()))
@@ -517,12 +525,8 @@ def main():
                 print(error)
 
         # Update and draw HUD
-        hud.update(media_mode)
-        screen.blit(hud, (0,0))
-
-        # Show FPS...
-        fps = font_artist_name.render(str(int(clock.get_fps())), True, Colour)
-        screen.blit(fps, (0,0))
+        hud.update(media_mode, clock.get_fps())
+        screen.blit(hud.surface, (0,0))
 
         # Update display
         pygame.display.flip()

@@ -12,7 +12,7 @@
 - WindowsRT in WIP will allow any media titles and names to be recognised, allow both spotify and windows modes
 - MacOS and Linux support somehow (WASAPI is the best loopback)
 - Performance needs improvement. Threading spotify data collection and graphics could help.
-- ...
+- Cython: Compiling Python
 
 
 ## The build command
@@ -23,9 +23,34 @@ hiding my keeeys!!
 # extends the sys module by a flag frozen=True and sets the app 
 # path into variable _MEIPASS'.
 
-~~This maybe the last time i commit (sad) it works well enough, good luck !~~ I just love this project too much i will keep going...
 
-# Useful Links (the tabs i have open)
+# Cython
+1. Compiling .py Files Directly (Minimal Rewriting):
+
+Effort: Very little. You only need to change your setup.py to use cythonize on your .py files.
+Performance Gain: Small to moderate. You get some speedup from compiling to native code, but Cython can't do much optimization without type information.
+When to Use: If you have a large codebase and want a quick, easy performance boost without significant changes, or if your code is primarily I/O-bound (waiting for disk or network), this might be sufficient.
+2. Renaming to .pyx and Adding Selective Type Annotations (Moderate Rewriting, Best Balance):
+
+Effort: Moderate. You rename .py to .pyx and focus on adding type annotations in the performance-critical sections of your code.
+Performance Gain: Significant. This is where Cython shines. By adding type information, you allow Cython to generate highly optimized C code.
+When to Use: This is the recommended approach for most cases. Identify the bottlenecks in your code (using profiling tools if necessary) and add type annotations there. You don't need to type everything; focus on loops, numerical computations, and function arguments/return values.
+3. Complete Rewrite with Cython's Syntax (Major Rewriting):
+
+Effort: Significant. You rewrite large portions of your code using Cython's specific syntax (e.g., cdef, cpdef, cimport).
+Performance Gain: Potentially the highest, but often not worth the extra effort.
+When to Use: Only necessary for extremely performance-critical applications where every last bit of optimization is needed.
+Strategies to Minimize Rewriting:
+
+Start with Profiling: Use Python's profiling tools (e.g., cProfile, line_profiler) to identify the performance bottlenecks in your code. This tells you exactly where to focus your Cython efforts.
+Incremental Cythonization: Don't try to convert everything at once. Start with the most performance-critical functions or classes. Gradually convert more code as needed.
+Focus on Numerical Code: Cython is most effective for numerical computations, loops, and array operations. If your code is mostly string manipulation or I/O, the benefits might be smaller.
+Use NumPy Effectively: NumPy is already highly optimized. If you're using NumPy correctly (vectorized operations instead of loops), you might not need much Cythonization for those parts. However, adding type annotations to NumPy arrays in Cython can still provide further improvements.
+--annotate Feature: Use the --annotate flag with cythonize (e.g., cythonize("your_module.pyx", annotate=True)). This generates an HTML file that highlights which parts of your code were successfully translated to C and which parts are still using Python's object model. This helps you identify areas where adding type annotations would be most beneficial.
+
+
+
+## Useful Links (the tabs i have open)
 https://www.desmos.com/calculator
 
 Could this work better...? fft that takes samples logarithmically than linearly
