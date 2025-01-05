@@ -1,7 +1,7 @@
 import pygame
 import math
 
-from Default.functions import Functions
+from Default import Functions
 
 class ImageFlipper:
     def __init__(self, image1_pygame_surface, image2_pygame_surface, flip_interval, flip_duration):

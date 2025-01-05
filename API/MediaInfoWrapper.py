@@ -2,6 +2,7 @@ import requests
 import numpy as np
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.cache_handler import CacheFileHandler
 import shutil
 import os
 import colorsys
@@ -11,6 +12,8 @@ import sys
 from dotenv import load_dotenv
 from PIL import Image
 from pathlib import Path
+
+from Default import Functions
 
 # WinRT is now winsdk
 from winsdk.windows.media.control import \
@@ -45,25 +48,24 @@ class MediaInfoWrapper():
         self._scope = "user-read-currently-playing user-read-recently-played" # Only need what user is listening to. 
         load_dotenv()
         # The spotify api object
-        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=self._scope,
-                                                    client_id=os.getenv("SPOTIPY_CLIENT_ID"), 
-                                                    client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-                                                    redirect_uri="http://localhost:8080"))
-            
+        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
+                                        scope=self._scope,
+                                        # client_id=os.getenv("SPOTIPY_CLIENT_ID"), 
+                                        # client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
+                                        client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
+                                        client_secret="bae6111d2ddf40f597c8dfb82c495227",
+                                        redirect_uri="http://localhost:8080",
+                                        cache_handler=CacheFileHandler(
+                                            cache_path=Functions.resource_path('.cache'))))
+        
         # private, setup
         self._sp_last_update = current_tick
         self._lock = threading.Lock()
 
-        # Get base path
-        if getattr(sys, 'frozen', False):
-            self.base_path = Path(sys._MEIPASS)
-        else:
-            self.base_path = Path(__file__).resolve().parent
-
         # Make cache folders
-        if not os.path.exists(self.base_path / '../cache/'):
-            os.makedirs(self.base_path / '../cache/')
-            os.makedirs(self.base_path / '../cache/img/')
+        if not os.path.exists(Functions.resource_path('cache/')):
+            os.makedirs(Functions.resource_path('cache/'))
+            os.makedirs(Functions.resource_path('cache/img/'))
 
         # First time get data
         self.get_data()
@@ -81,7 +83,7 @@ class MediaInfoWrapper():
             threading.Thread(target=self.get_data).start()
             # self.get_data()
 
-            print("Updated spotify data \n")
+            # print("Updated spotify data \n")
             
             self.updated = True
         else:
@@ -126,7 +128,7 @@ class MediaInfoWrapper():
                 # print("return default values \n")
                 self.song_name = "Loading..."
                 self.artist_name = "Play Spotify Music..."
-                self.album_art_data = self.artist_image_data = open(self.base_path / '../assets/ico/ico.png', 'rb').read()
+                self.album_art_data = self.artist_image_data = open(Functions.resource_path('assets/ico/ico.png'), 'rb').read()
                 self.results = None
                 
             # self.results = None              
@@ -137,17 +139,17 @@ class MediaInfoWrapper():
     def CacheImage(self, url, get_colour):
         try:
             # Clear Cache above certain size
-            if (self.get_folder_size(self.base_path / '../cache/') >= (self.cache_limit * 2 ** 20)):
+            if (self.get_folder_size(Functions.resource_path('cache/')) >= (self.cache_limit * 2 ** 20)):
                 # Remove the folder and its contents
-                shutil.rmtree(self.base_path / '../cache/')
+                shutil.rmtree(Functions.resource_path('cache/'))
                 
                 # Make the folders
-                if not os.path.exists(self.base_path / '../cache/'):
-                    os.makedirs(self.base_path / '../cache/')
-                    os.makedirs(self.base_path / '../cache/img')
+                if not os.path.exists(Functions.resource_path('cache/')):
+                    os.makedirs(Functions.resource_path('cache/'))
+                    os.makedirs(Functions.resource_path('cache/img'))
 
             # Find the url
-            filename = self.base_path / ('../cache/img/' + url.split('/')[-1] + '.jpg')
+            filename = Functions.resource_path('cache/img/' + url.split('/')[-1] + '.jpg')
             
             # Load image data and save if needed
             try:

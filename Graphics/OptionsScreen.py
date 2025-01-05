@@ -6,22 +6,18 @@ from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import ttk
 
-class OptionsWindow:
-    def __init__(self):
+from Default import Functions
+
+class OptionsScreen():
+    def __init__(self, config):
         self.window = tk.Tk()
         self.window.title("Options")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.slider_list_names = ["Album Art", "Song Name", "Artist Name", "Visualiser Position", 
                                     "Visualiser Size", "Oscilloscope Position", "Oscilloscope Size"]
 
-        # Get the path to the icon file
-        if getattr(sys, 'frozen', False):
-            base_path = Path(sys._MEIPASS)
-        else:
-            base_path = Path(__file__).resolve().parent
-        image_path = base_path / '../assets/img/options.png'
-
         # Load the background image
+        image_path = Functions.resource_path('assets/img/options.png')
         self.background_image = Image.open(image_path)
         self.background_photo = ImageTk.PhotoImage(self.background_image)
 
@@ -29,12 +25,6 @@ class OptionsWindow:
         self.canvas = tk.Canvas(self.window, width=self.background_image.width, height=self.background_image.height)
         self.canvas.pack(fill="both")
         self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
-
-        # Initialize the parser
-        config = configparser.ConfigParser()
-        # Read the configuration file
-        config_path = base_path / '../config.cfg'
-        config.read(config_path)
 
         # Define variables to be controlled by sliders
         self.bass_pump = tk.DoubleVar(value=config.getfloat('Customisation', 'BassPump'))

@@ -16,11 +16,12 @@ import webbrowser
 import threading
 import numpy as np
 
+from Default import Functions
 from Graphics.GifSprite import GifSprite
 from Graphics.VisualiserGraphics import Visualiser
 # from BackgroundManager import BackgroundManager
 from Graphics.ImageFlipper import ImageFlipper
-from Graphics.OptionsScreen import OptionsWindow
+from Graphics.OptionsScreen import OptionsScreen
 from Graphics.Oscilloscope import Oscilloscope
 from Graphics.HUD import HUD
 from API.MediaInfoWrapper import MediaInfoWrapper
@@ -80,7 +81,7 @@ def main():
     # Initialize the parser
     config = configparser.ConfigParser()
     # Read the configuration file
-    config.read('config.cfg')
+    config.read('.\\config.cfg')
 
     #####################################
     #               Debug               #
@@ -182,12 +183,7 @@ def main():
     # Initialize Pygame
     # Set these first so it shows correctly
     pygame.display.set_caption("Audio Visualiser")
-    # Get the path to the icon file
-    if getattr(sys, 'frozen', False):
-        base_path = Path(sys._MEIPASS)
-    else:
-        base_path = Path(__file__).resolve().parent
-    icon_path = base_path / 'assets/ico/ico.png'
+    icon_path = Functions.resource_path('assets/ico/ico.png')
     pygame.display.set_icon(pygame.image.load(icon_path))
     # Init pygame graphics engine
     pygame.init()
@@ -220,12 +216,12 @@ def main():
     #              Options              #
     #####################################
     # Create an instance of OptionsWindow and close it
-    options_window = OptionsWindow()
+    options_window = OptionsScreen(config)
     options_window.close()
 
     # Spotify #
     # Spotify Branding
-    spotify_icon_path = base_path / 'assets/ico/spotify.png'
+    spotify_icon_path = Functions.resource_path('assets/ico/spotify.png')
     spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
     spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
     # Load Spotify Data
@@ -265,7 +261,8 @@ def main():
     # rainbow visualiser mask
     rainbow_image = pygame.transform.scale(
                     pygame.transform.gaussian_blur(
-                    (pygame.image.load(('assets/img/rainbow.jpg')).convert_alpha()), 5), (w,h))
+                    pygame.image.load(
+                    Functions.resource_path('assets/img/rainbow.jpg')).convert_alpha(), 10), (w,h))
     test_counter_1 = 0
     # Main Loop
     while running:
@@ -431,7 +428,7 @@ def main():
             mask2 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, False, True))
             # Make the Rainbow Filter
             test_counter_1 = ((test_counter_1 + 1) % (frame_rate * 2))
-            test_scalar_1 = (math.sin(math.pi * 2 * (test_counter_1 / (frame_rate * 2)))) / 5
+            test_scalar_1 = Functions.sine_2_t((test_counter_1 / (frame_rate * 2))) / 5
             if visualiser_image == "Rainbow": 
                 image_scaled = pygame.transform.scale_by(rainbow_image, 1.2 + test_scalar_1)
             elif visualiser_image == "Artist":
@@ -594,13 +591,13 @@ def main():
     # Get performance Stats
     if performanceDebug:
         profiler.disable()
-        with open('profiling_stats.txt', 'w') as f:
+        with open('.\\profiling_stats.txt', 'w') as f:
             stats = pstats.Stats(profiler, stream=f)
             stats.sort_stats(pstats.SortKey.TIME)
             stats.print_stats()
 
-    # exit fully
-    exit()
+    # # exit fully
+    # exit()
 
 if __name__ == '__main__':
     main()

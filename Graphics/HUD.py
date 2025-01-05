@@ -3,18 +3,15 @@ import pygame
 
 from pathlib import Path
 
+from Default import Functions
+
 class HUD():
     def __init__(self, HUD_size):
         self.size = HUD_size # HUD size is tuple
-        # Get the base path
-        if getattr(sys, 'frozen', False):
-            base_path = Path(sys._MEIPASS)
-        else:
-            base_path = Path(__file__).resolve().parent
-
+    
         self.spotify_icon = pygame.transform.smoothscale_by(
                             pygame.image.load(
-                                base_path / '../assets/ico/spotify.png').convert_alpha(), 0.03)
+                            Functions.resource_path('assets/ico/spotify.png')).convert_alpha(), 0.03)
 
         # Create HUD surface
         self.surface = pygame.Surface(self.size)
@@ -22,7 +19,7 @@ class HUD():
         self.scale = 1
         self.original_size = HUD_size
 
-        self.basic_font = pygame.font.SysFont('Arial', 32)
+        self.basic_font = pygame.font.SysFont('Arial', 24)
 
         # Run to create scaled objects
         self.__resize_objects__()
