@@ -16,7 +16,7 @@
 
 
 ## The build command
-`.\.venv\Scripts\python.exe -m PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data ".env:." --hidden-import dotenv --add-data "assets/ico/ico.png:assets/ico" --add-data "assets/img/options.png:assets/img"  --add-data "assets/ico/spotify.png:assets/ico" .\main.py`
+`.\.venv\Scripts\python.exe -m PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data ".env:." --hidden-import dotenv --add-data "assets/ico;assets/ico" --add-data "assets/img;assets/img" .\main.py`
 hiding my keeeys!!
 
 # If the application is run as a bundle, the PyInstaller bootloader

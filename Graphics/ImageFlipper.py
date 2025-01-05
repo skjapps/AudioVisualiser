@@ -1,6 +1,8 @@
 import pygame
 import math
 
+from Default.functions import Functions
+
 class ImageFlipper:
     def __init__(self, image1_pygame_surface, image2_pygame_surface, flip_interval, flip_duration):
         self.image1 = image1_pygame_surface
@@ -29,8 +31,8 @@ class ImageFlipper:
                 if t >= 0.5 and not self.image_switched:
                     self.current_image = self.image2 if self.current_image == self.image1 else self.image1
                     self.image_switched = True
-                self.scale_width = self.ease_in_out_cosine(t)
-                self.scale_height = self.ease_in_out_sine(t)
+                self.scale_width = Functions.ease_in_out_cosine(t)
+                self.scale_height = Functions.ease_in_out_sine(t)
 
         elif elapsed_time >= self.flip_interval:
             self.flipping = True
@@ -69,12 +71,4 @@ class ImageFlipper:
         bytes1 = pygame.image.tostring(surface1, 'RGB')
         bytes2 = pygame.image.tostring(surface2, 'RGB')
         return bytes1 == bytes2
-        
-    @staticmethod
-    def ease_in_out_cosine(t):
-        return abs(math.cos(math.pi * t))
-
-    @staticmethod
-    def ease_in_out_sine(t):
-        return abs(math.sin(math.pi * t))
 
