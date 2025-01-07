@@ -8,7 +8,6 @@ import configparser
 import cProfile
 import pstats
 import re
-import sys
 import win32api
 import win32con
 import win32gui
@@ -122,6 +121,7 @@ def main():
         'Customisation', 'VisualiserSize').split(',')))
     visualiser_image = config.get('Customisation', 'VisualiserImage')
     bar_thickness = config.getfloat('Customisation', 'BarThickness')
+    bar_height = config.getfloat('Customisation', 'BarHeight')
 
     oscilloscope_position = tuple(map(float, config.get(
         'Customisation', 'OscilloscopePosition').split(',')))
@@ -200,7 +200,7 @@ def main():
     if background_style == "Transparent":
         transparent_on_top(background_colour)
 
-    if background_style == "GIF":
+    if background_style == "GIF" or visualiser_image == "Background":
         try:
             background_folder = 'backgrounds'
             background_fps = 30
@@ -352,7 +352,7 @@ def main():
                     artist_image, ResizedAlbumArtSize)
                 flipper.change_images(album_art, artist_image)
                 # Background
-                if background_style == "GIF":
+                if background_style == "GIF" or visualiser_image == "Background":
                     threads = []
                     width_ratio = w / background.size[0]
                     height_ratio = h / background.size[1]
@@ -390,17 +390,18 @@ def main():
         # GRAPHICS PROCESSING
 
         # Background GIF
-        if background_style == "GIF":
+        screen.fill(background_colour) # Clear screen
+        if background_style == "GIF" or visualiser_image == "Background":
             for background in backgrounds:
                 # update any fading backgrounds
                 if background.fading:
-                    screen.blit(background.image, background.pos)
+                    if background_style == "GIF":
+                        screen.blit(background.image, background.pos)
                     background.update()
-            screen.blit(backgrounds[background_index].image,
-                        backgrounds[background_index].pos)
+            if background_style == "GIF":
+                screen.blit(backgrounds[background_index].image,
+                            backgrounds[background_index].pos)
             backgrounds[background_index].update()
-        else:
-            screen.fill(background_colour)
 
         # Album Art colouring
         # Colour avg
@@ -413,7 +414,7 @@ def main():
             )
 
         # Update the visualiser
-        visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness)
+        visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness, bar_height)
         # Render Visualiser to main screen
         rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
                                                     int(h - h * visualiser_position[1])))
@@ -434,8 +435,16 @@ def main():
             elif visualiser_image == "Artist":
                 image_scaled = pygame.transform.smoothscale_by(artist_image, 
                                                             max(w//artist_image.get_width(), h//artist_image.get_height()))
-            filter.blit(image_scaled, image_scaled.get_rect(center=(rainbow_image.get_width() // 2, 
-                                                                        rainbow_image.get_height() // 2)))
+            elif visualiser_image == "Background":
+                image_scaled = pygame.Surface((w,h))
+                for background in backgrounds:
+                    # update any fading backgrounds
+                    if background.fading:
+                        image_scaled.blit(background.image, background.pos)
+                image_scaled.blit(backgrounds[background_index].image,
+                            backgrounds[background_index].pos)
+            filter.blit(image_scaled, image_scaled.get_rect(center=(image_scaled.get_width() // 2, 
+                                                                        image_scaled.get_height() // 2)))
 
             # Combine the visualiser masks
             mask1.draw(mask2, (0,0))
@@ -470,7 +479,7 @@ def main():
             if random_font_swap:
                 font = random.choice(available_fonts)
                 swap_font = True
-            if background_style == "GIF":
+            if background_style == "GIF" or visualiser_image == "Background":
                 # change background with fade when song changed...
                 if (len(backgrounds) > 1):
                     backgrounds[background_index].start_fade_out(

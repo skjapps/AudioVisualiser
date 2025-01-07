@@ -9,7 +9,7 @@ class Visualiser():
         # Create visualiser surface
         self.surface = pygame.Surface((self.width, self.height))
 
-    def update(self, log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness=1.0):
+    def update(self, log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness=1.0, bar_height_modifier=0.5):
 
         # Clear the visuiliser surface
         self.surface.fill((0, 0, 0))
@@ -19,7 +19,7 @@ class Visualiser():
         if (max_value > 30):
             bar_width = self.width // len(log_fft_data)
             for i in range(1, len(log_fft_data)):
-                bar_height = log_fft_data[i] * self.height * 0.5  # Scale to screen height
+                bar_height = log_fft_data[i] * self.height * bar_height_modifier  # Scale to screen height
                 log_fft_data[i] = min(log_fft_data[i], 1)
                 pygame.draw.rect(self.surface, (
                     (Colour[0] * min(log_fft_data[i], 0.8) +

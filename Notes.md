@@ -20,6 +20,9 @@ FIRST replace the keys from env, to hide it in the actual python files
 `.\.venv\Scripts\python.exe -m PyInstaller --onefile --noconsole --icon="assets/ico/ico.png" --name=AudioVisualiser --add-data "assets/ico;assets/ico" --add-data "assets/img;assets/img" .\main.py`
 hiding my keeeys!!
 
+new nuitka trying out this:
+`nuitka --onefile --windows-console-mode=disable --windows-icon-from-ico="assets/ico/ico.png" --output-filename=AudioVisualiser.exe --include-data-dir=assets/ico=assets/ico --include-data-dir=assets/img=assets/img .\main.py`
+
 # If the application is run as a bundle, the PyInstaller bootloader
 # extends the sys module by a flag frozen=True and sets the app 
 # path into variable _MEIPASS'.
