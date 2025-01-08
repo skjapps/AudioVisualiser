@@ -37,6 +37,7 @@ class MediaInfoWrapper():
         self.media_update_rate = media_update_rate
 
         # Storing media info, for any mode
+        self.item = None
         self.song_name = None
         self.artist_name = None
         self.isPlaying = False
@@ -97,11 +98,12 @@ class MediaInfoWrapper():
                     self.results = self.sp.currently_playing()
                     # print(self.results)
                     # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                    if (self.song_name != self.results['item']['name']) or (self.artist_name != self.results['item']['artists'][0]['name']):
+                    if (self.results['item'] != self.item):
                         self.changed = True
                     else:
                         self.changed = False
                     # Set media related info
+                    self.item = self.results['item'] # The item holds a lot of unique data
                     self.song_name = self.results['item']['name']
                     self.artist_name = ""
                     for artist in self.results['item']['artists'] : self.artist_name += (str(artist['name']) + ", ")
@@ -208,7 +210,6 @@ class MediaInfoWrapper():
         # Convert back to the range [0, 255]
         self.vibrant_colour_album_art = (vibrant_color * 255).astype(int).tolist()
         
-
     # From https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python
     def get_folder_size(self, start_path = '.'):
         total_size = 0
