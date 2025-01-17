@@ -203,7 +203,6 @@ def main():
     if background_style == "GIF" or visualiser_image == "Background":
         try:
             background_folder = 'backgrounds'
-            background_fps = 30
             backgrounds = load_backgrounds(
                 background_folder, background_fps, OriginalAppResolution, background_scale)
             # backgroundManager = BackgroundManager(OriginalAppResolution)
@@ -259,11 +258,8 @@ def main():
     change_background = False  # Flag to change background when pressed up/down
     scalar = 0  # colour scaling
     # rainbow visualiser mask
-    rainbow_image = pygame.transform.scale(
-                    pygame.transform.gaussian_blur(
-                    pygame.image.load(
-                    Functions.resource_path('assets/img/rainbow.jpg')).convert_alpha(), 10), (w,h))
-    test_counter_1 = 0
+    rainbow_animate = GifSprite('assets/img/rainbow.gif', (0, 0), fps=30, background_scale="Stretch")
+    rainbow_animate.resize_frames(w / rainbow_animate.size[0], h / rainbow_animate.size[1])
     # Main Loop
     while running:
 
@@ -326,8 +322,8 @@ def main():
                 # Changes for resize
                 # Visualiser Resize
                 visualiser.resize_surface(visualiser_size, w, h)
-                # Resize Rainbow image
-                rainbow_image = pygame.transform.scale(rainbow_image, (w, h))
+                # Resize Rainbow Gif
+                rainbow_animate.resize_frames(w / rainbow_animate.size[0], h / rainbow_animate.size[1])
                 # Oscilloscope Resize
                 oscilloscope.resize_surface(oscilloscope_size, w, h)
                 # HUD Resize
@@ -396,12 +392,19 @@ def main():
                 # update any fading backgrounds
                 if background.fading:
                     if background_style == "GIF":
-                        screen.blit(background.image, background.pos)
+                        screen.blit(background.image, 
+                                background.image.get_rect(center=(w//2,h//2)).topleft)
                     background.update()
             if background_style == "GIF":
                 screen.blit(backgrounds[background_index].image,
-                            backgrounds[background_index].pos)
+                            backgrounds[background_index].image.get_rect(center=(w//2,h//2)).topleft)
             backgrounds[background_index].update()
+        if background_style == "Artist":
+            image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(artist_image, 2), (w,h))
+            screen.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
+        if background_style == "Album":
+            image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(album_art, 2), (w,h))
+            screen.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
 
         # Album Art colouring
         # Colour avg
@@ -416,25 +419,44 @@ def main():
         # Update the visualiser
         visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness, bar_height)
         # Render Visualiser to main screen
-        rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
+        visualiser_rect = visualiser.surface.get_rect(center=(int(w * visualiser_position[0]), 
                                                     int(h - h * visualiser_position[1])))
+
+        # Update the oscilloscope
+        gain_change = 1e4
+        if oscilloscope_normalisation:
+            gain_change = max(np.max(p.mono_data), 1e3)
+        oscilloscope.update_oscilloscope(
+            p.mono_data / gain_change, album_art_colour_vibrancy=album_art_colour_vibrancy, 
+                                                        colour=Colour, mode=oscilloscope_acdc)
+        oscilloscope_rect = oscilloscope.surface.get_rect(center=(int(w * oscilloscope_position[0]), 
+                                                        int(h - h * oscilloscope_position[1])))
         
         if visualiser_image == "None":
-            screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
-            screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+            # screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
+            # screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+            screen.blit(visualiser.surface, visualiser_rect)
+            # Blit the oscilloscope surface onto the main screen
+            screen.blit(oscilloscope.surface, oscilloscope_rect)
         else:
+            # Filter for colours and other visuals
             filter = pygame.Surface((w,h))
             # Make masks from the visualiser(s)
-            mask1 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, True, False))
-            mask2 = pygame.mask.from_surface(pygame.transform.flip(visualiser.surface, False, True))
-            # Make the Rainbow Filter
-            test_counter_1 = ((test_counter_1 + 1) % (frame_rate * 2))
-            test_scalar_1 = Functions.sine_2_t((test_counter_1 / (frame_rate * 2))) / 5
+            mask_main = pygame.Mask((w,h))
+            mask1 = pygame.mask.from_surface(visualiser.surface)
+            mask2 = pygame.mask.from_surface(oscilloscope.surface)
+
+            # Make the Filter
             if visualiser_image == "Rainbow": 
-                image_scaled = pygame.transform.scale_by(rainbow_image, 1.2 + test_scalar_1)
+                filter.blit(rainbow_animate.image,
+                            rainbow_animate.image.get_rect(center=(w//2,h//2)).topleft)
+                rainbow_animate.update()
             elif visualiser_image == "Artist":
-                image_scaled = pygame.transform.smoothscale_by(artist_image, 
-                                                            max(w//artist_image.get_width(), h//artist_image.get_height()))
+                image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(artist_image, 2), (w,h))
+                filter.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
+            elif visualiser_image == "Album":
+                image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(album_art, 2), (w,h))
+                filter.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
             elif visualiser_image == "Background":
                 image_scaled = pygame.Surface((w,h))
                 for background in backgrounds:
@@ -443,31 +465,17 @@ def main():
                         image_scaled.blit(background.image, background.pos)
                 image_scaled.blit(backgrounds[background_index].image,
                             backgrounds[background_index].pos)
-            filter.blit(image_scaled, image_scaled.get_rect(center=(image_scaled.get_width() // 2, 
-                                                                        image_scaled.get_height() // 2)))
+                filter.blit(image_scaled, image_scaled.get_rect().topleft)
 
             # Combine the visualiser masks
-            mask1.draw(mask2, (0,0))
-            mask_surface = mask1.to_surface(setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0))
+            mask_main.draw(mask1, visualiser_rect.topleft)
+            mask_main.draw(mask2, oscilloscope_rect.topleft)
+            mask_surface = mask_main.to_surface(setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0))
             # Apply mask to filter
             filter.blit(mask_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
             filter.set_colorkey((0,0,0))
             # Blit Filter with visualisers to screen
-            screen.blit(filter, (0, 0))
-        
-
-        # Blit the oscilloscope surface onto the main screen
-        if oscilloscope_normalisation:
-            oscilloscope.update_oscilloscope(
-                p.mono_data / max(np.max(p.mono_data), 1e3), album_art_colour_vibrancy=album_art_colour_vibrancy, 
-                                                            colour=Colour, mode=oscilloscope_acdc)
-        elif not oscilloscope_normalisation:
-            oscilloscope.update_oscilloscope(
-                p.mono_data / 1e4, album_art_colour_vibrancy=album_art_colour_vibrancy, 
-                                                        colour=Colour, mode=oscilloscope_acdc)
-        rect = oscilloscope.surface.get_rect(center=(int(w * oscilloscope_position[0]), 
-                                                        int(h - h * oscilloscope_position[1])))
-        screen.blit(oscilloscope.surface, rect)
+            screen.blit(filter, (0,0))
         
         # Render Spotify Data
         # If spotify is being used, show spotify logo

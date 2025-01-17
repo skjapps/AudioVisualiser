@@ -96,7 +96,6 @@ class Oscilloscope():
                         0.8) + album_art_colour_vibrancy * 50)
                         ), (x, self.height // 2), (x, y), width=2)
                     
-                    
 
     def resize_surface(self, oscilloscope_size, width, height):
         self.width = int(width * oscilloscope_size[0])  # Width of the oscilloscope display

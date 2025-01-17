@@ -41,6 +41,8 @@ class GifSprite(pygame.sprite.Sprite):
         width = int(self.image.get_width() * x_stretch)
         height = int(self.image.get_height() * y_stretch)
 
+        # print(width, height)
+
         for i, frame in enumerate(self._frames):
             if self.background_scale == "Stretch":
                 # Stretch based on the larger scale factor
