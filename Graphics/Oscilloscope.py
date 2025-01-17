@@ -84,7 +84,7 @@ class Oscilloscope():
                         album_art_colour_vibrancy * 50),
                         (colour[2] * min(normalized_height, 0.8) + 
                         album_art_colour_vibrancy * 50)), 
-                        (x, y), (x, self.height - y), width=2)
+                        (x, y), (x, self.height - y), width=1)
                     # True AC Oscilloscope (more ? accurate)
                     if (mode == "ac"):
                         pygame.draw.line(self.surface, (
@@ -94,7 +94,7 @@ class Oscilloscope():
                         album_art_colour_vibrancy * 50),
                         (colour[2] * min(normalized_height,
                         0.8) + album_art_colour_vibrancy * 50)
-                        ), (x, self.height // 2), (x, y), width=2)
+                        ), (x, self.height // 2), (x, y), width=1)
                     
 
     def resize_surface(self, oscilloscope_size, width, height):

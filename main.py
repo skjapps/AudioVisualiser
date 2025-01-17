@@ -276,6 +276,10 @@ def main():
                     options_window.show()
                 if event.key == pygame.K_g:
                     oscilloscope_normalisation = not oscilloscope_normalisation
+                if event.key == pygame.K_a:
+                    oscilloscope_acdc = "ac"
+                if event.key == pygame.K_d:
+                    oscilloscope_acdc = "dc"
                 if event.key == pygame.K_LEFT:
                     font_index = (font_index - 1) % len(available_fonts)
                     font = available_fonts[font_index]
