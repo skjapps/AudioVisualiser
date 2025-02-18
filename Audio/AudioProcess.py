@@ -5,14 +5,12 @@ class AudioProcess():
     def __init__(self):
         self.previous_log_fft_data = []
 
-    def perform_FFT(self, CHUNK, num_of_bars, bass_pump, smoothing_factor, p):
+    def perform_FFT(self, CHUNK, num_of_bars, bass_pump, smoothing_factor, low_pass_bass_reading, p):
         # AUDIO PROCESSING
         try:
             fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
         except Exception as error:
             print("An error occurred:", error)
-
-        audio_time_fft = pygame.time.get_ticks()
 
         # The new maths
         # Smooth interpretation
@@ -36,12 +34,21 @@ class AudioProcess():
         # Normalisation of values
         max_value = max(np.max(log_fft_data), 1e3)
         if max_value > 0:
-            log_fft_data = log_fft_data / (max_value * 0.8)
+            log_fft_data = log_fft_data / max_value
 
+        # Calculate the bass reading
+        sample_rate = p.default_speakers["defaultSampleRate"]
+        desired_freq = low_pass_bass_reading
+        freqs = np.fft.fftfreq(len(smooth_log_fft_data), d=1/sample_rate)
+        closest_index = np.argmin(np.abs(freqs - desired_freq))
+        
+        bass_region = log_fft_data[:closest_index]
+        bass_reading = np.max(bass_region)
 
+        # Apply smoothing for visualisation
         if (self.previous_log_fft_data is not None) & (len(log_fft_data) == len(self.previous_log_fft_data)):
             log_fft_data = smoothing_factor * self.previous_log_fft_data + \
                 (1 - smoothing_factor) * log_fft_data
         self.previous_log_fft_data = log_fft_data
 
-        return log_fft_data, max_value
+        return log_fft_data, max_value, bass_reading

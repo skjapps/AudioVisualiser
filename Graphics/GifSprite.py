@@ -73,7 +73,14 @@ class GifSprite(pygame.sprite.Sprite):
         self._fade_duration = duration
         self.fading = True
 
-    def update(self):
+    def update(self, fps = None):
+        # Dynamic FPS
+        if fps is None:
+            fps = self._fps
+        self._time_per_frame = 1000 // fps  # Time per frame in milliseconds
+        # Update fps if changed
+        self._fps = fps
+
         now = pygame.time.get_ticks()
         if now - self._last_update > self._time_per_frame:
             self._last_update = now
