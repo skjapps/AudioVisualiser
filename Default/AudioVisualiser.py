@@ -1,3 +1,4 @@
+import asyncio
 import math
 import pygame
 import io
@@ -29,7 +30,6 @@ from Audio.PyAudioWrapper import PyAudioWrapper
 from Audio.AudioProcess import AudioProcess
 
 from pathlib import Path
-
 
 #####################################
 #            Functions              #
@@ -81,9 +81,9 @@ class AudioVisualiser():
     def __init__(self):
         self.re_run = True
         # while self.re_run:
-        self.main()
+        asyncio.run(self.main())
 
-    def main(self):
+    async def main(self):
         #####################################
         #              Config               #
         #####################################
@@ -235,20 +235,21 @@ class AudioVisualiser():
         spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
         spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
         # Load Spotify Data
-        if media_mode == "Spotify":
+        if media_mode == "Spotify" or media_mode == "winsdk":
             sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(),
                                     cache_limit, media_update_rate)
+            await sp.get_data()
             album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
             album_art = pygame.transform.smoothscale_by(
                 album_art, ResizedAlbumArtSize)
-            artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-            artist_image = pygame.transform.smoothscale_by(
-                artist_image, ResizedAlbumArtSize)
+            if media_mode == "Spotify":
+                artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                artist_image = pygame.transform.smoothscale_by(
+                    artist_image, ResizedAlbumArtSize)
             sp.updated = False # Need to fix logic here...
-
-        # Create an ImageFlipper instance
-        flipper = ImageFlipper(album_art, artist_image, flip_interval=(
-            1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
+            # Create an ImageFlipper instance
+            flipper = ImageFlipper(album_art, artist_image, flip_interval=(
+                1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))            
         
         #####################################
         #             Main loop             #
@@ -358,7 +359,7 @@ class AudioVisualiser():
                         # call a resize event
                         pygame.event.post(pygame.event.Event(pygame.VIDEORESIZE))
                 # Mouse Clicks
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN and media_mode == "None":
                     # If spotify button is clicked (postions of the mouse click)
                     # print(event.pos, "\n\n")
                     flipper_rect = pygame.rect.Rect((album_art_position[0] * w - (flipper.current_image.get_width()/2),
@@ -405,7 +406,8 @@ class AudioVisualiser():
                     artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
                     artist_image = pygame.transform.scale_by(
                         artist_image, ResizedAlbumArtSize)
-                    flipper.change_images(album_art, artist_image)
+                    if media_mode == "None":
+                        flipper.change_images(album_art, artist_image)
                     # Background
                     if background_style == "GIF" or visualiser_image == "Background":
                         threads = []
@@ -428,19 +430,20 @@ class AudioVisualiser():
             log_fft_data, max_value, bass_reading = audio_processor.perform_FFT(CHUNK, num_of_bars, bass_pump, smoothing_factor, low_pass_bass_reading, p)
             
             # SPOTIFY PROCESSING
-            sp.update(pygame.time.get_ticks())
-            if sp.updated:
-                try:
-                    album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-                    album_art = pygame.transform.smoothscale_by(
-                        album_art, ResizedAlbumArtSize)
-                    artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-                    artist_image = pygame.transform.smoothscale_by(
-                        artist_image, ResizedAlbumArtSize)
-                    flipper.change_images(album_art, artist_image)
-                    sp.updated = False
-                except Exception as error:
-                    print(error, "\n\n")
+            if media_mode != "None":
+                await sp.update(pygame.time.get_ticks())
+                if sp.updated:
+                    try:
+                        album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+                        album_art = pygame.transform.smoothscale_by(
+                            album_art, ResizedAlbumArtSize)
+                        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                        artist_image = pygame.transform.smoothscale_by(
+                            artist_image, ResizedAlbumArtSize)
+                        flipper.change_images(album_art, artist_image)
+                        sp.updated = False
+                    except Exception as error:
+                        print(error, "\n\n")
 
             # GRAPHICS PROCESSING
 
@@ -471,7 +474,7 @@ class AudioVisualiser():
 
             # Album Art colouring
             # Colour avg
-            if album_art_colouring:
+            if album_art_colouring and media_mode != "None":
                 scalar = 255 - max(sp.avg_colour_album_art)
                 Colour = (
                     sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
@@ -546,19 +549,20 @@ class AudioVisualiser():
             #     screen.blit(spotify_icon, (w - spotify_icon.get_width(),
             #                                 0))
             # When data changes
-            if sp.changed:
-                if random_font_swap:
-                    font = random.choice(available_fonts)
-                    swap_font = True
-                if background_style == "GIF" or visualiser_image == "Background":
-                    # change background with fade when song changed...
-                    if (len(backgrounds) > 1):
-                        backgrounds[background_index].start_fade_out(
-                            background_fade_duration * 1000)
-                        backgrounds[(background_index + 1) % len(backgrounds)
-                                    ].start_fade_in(background_fade_duration * 1000)
-                        background_index = (background_index + 1) % len(backgrounds)
-                sp.changed = False
+            if media_mode != "None":
+                if sp.changed:
+                    if random_font_swap:
+                        font = random.choice(available_fonts)
+                        swap_font = True
+                    if background_style == "GIF" or visualiser_image == "Background":
+                        # change background with fade when song changed...
+                        if (len(backgrounds) > 1):
+                            backgrounds[background_index].start_fade_out(
+                                background_fade_duration * 1000)
+                            backgrounds[(background_index + 1) % len(backgrounds)
+                                        ].start_fade_in(background_fade_duration * 1000)
+                            background_index = (background_index + 1) % len(backgrounds)
+                    sp.changed = False
 
             if swap_font:
                 font_song_name = pygame.font.SysFont(
@@ -568,38 +572,39 @@ class AudioVisualiser():
                 swap_font = False
 
             # Render song name
-            if song_name_short:
-                song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
-            else:
-                song_name_text = sp.song_name
-            song_name = font_song_name.render(song_name_text,
-                                                True, Colour)
-            # Display song name
-            screen.blit(song_name, (w * song_name_position[0],
-                                    h - h * song_name_position[1]))
-
-            # Render artist name
-            artist_name = font_artist_name.render(sp.artist_name,
+            if media_mode != "None":
+                if song_name_short:
+                    song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
+                else:
+                    song_name_text = sp.song_name
+                song_name = font_song_name.render(song_name_text,
                                                     True, Colour)
-            # Display artist name
-            screen.blit(artist_name, (w * artist_name_position[0],
-                                    h - h * artist_name_position[1] + ResizedSongNameFontSize))
+                # Display song name
+                screen.blit(song_name, (w * song_name_position[0],
+                                        h - h * song_name_position[1]))
 
-            # Display album art
-            if (album_art != None) or (artist_image != None):
-                try:
-                    # Incase size changed
-                    ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
-                                                            h/OriginalAppResolution[1]) * 0.3
+                # Render artist name
+                artist_name = font_artist_name.render(sp.artist_name,
+                                                        True, Colour)
+                # Display artist name
+                screen.blit(artist_name, (w * artist_name_position[0],
+                                        h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
-                    # Update the flipper
-                    flipper.update()
+                # Display album art
+                if (album_art != None) or (artist_image != None):
+                    try:
+                        # Incase size changed
+                        ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
+                                                                h/OriginalAppResolution[1]) * 0.3
 
-                    # Render the current image
-                    flipper.render(screen, (w * album_art_position[0],
-                                        h - h * album_art_position[1]))
-                except Exception as error:
-                    print(error)
+                        # Update the flipper
+                        flipper.update()
+
+                        # Render the current image
+                        flipper.render(screen, (w * album_art_position[0],
+                                            h - h * album_art_position[1]))
+                    except Exception as error:
+                        print(error)
 
             # Update and draw HUD
             hud.update(media_mode, clock.get_fps())
@@ -611,15 +616,17 @@ class AudioVisualiser():
             # Get options changes
             frame_rate = options_window.frame_rate.get()
             num_of_bars = options_window.num_of_bars.get()
-            sp.media_update_rate = options_window.media_update_rate.get()
             bass_pump = options_window.bass_pump.get()
             smoothing_factor = options_window.smoothing_factor.get()
-            album_art_size = options_window.album_art_size.get()
-            album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
             background_fade_duration = options_window.fade_duration.get()
-            flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
-            flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
             oscilloscope.gain = options_window.oscilloscope_gain.get()
+            # For media
+            if media_mode != "None":
+                sp.media_update_rate = options_window.media_update_rate.get()
+                album_art_size = options_window.album_art_size.get()
+                album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
+                flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
+                flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
             # Positioning
             if options_window.selected_element.get() == "Album Art":
                 album_art_position = (options_window.x_position.get(),
