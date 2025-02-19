@@ -29,31 +29,26 @@ class DotField():
         # Update and render dots
         for dot in self.dots:
             x, y, size, speed, phase = dot
-            speed = self.speed_factor * bass_reading  # Adjust speed based on bass reading
+            # dot[3] is dot's original speed
+            speed = dot[3] * self.speed_factor * bass_reading  # Adjust speed based on bass reading
 
+            # Update X pos
             if self.direction == "right":
                 x += speed
                 if x > self.width:
                     x = 0
-                    y = random.randint(0, self.height)
-                    # Min size 1
-                    size = max(random.uniform(self.dot_size_range[0], self.dot_size_range[1]), 1)
-                    speed = random.uniform(1, self.speed_factor) * ((size / self.dot_size_range[1]) * 200)
-                    phase = random.uniform(0, 2 * math.pi)
             elif self.direction == "left":
                 x -= speed
                 if x < 0:
                     x = self.width
-                    y = random.randint(0, self.height)
-                    # Min size 1
-                    size = max(random.uniform(self.dot_size_range[0], self.dot_size_range[1]), 1)
-                    speed = random.uniform(0.5, self.speed_factor) * ((size / self.dot_size_range[1]) * 200)
-                    phase = random.uniform(0, 2 * math.pi)
 
             # Apply sine wave motion to the y-coordinate
             y += int(math.sin(x / 20 + phase) * 10)
-
+            
+            # Render
             pygame.draw.circle(self.surface, self.dot_color, (int(x), int(y)), size)
+
+            # Store new xpos
             dot[0] = x
 
     def _generate_dots(self):
@@ -64,7 +59,7 @@ class DotField():
             y = random.randint(0, self.height)
             # Min size 1
             size = max(random.uniform(self.dot_size_range[0], self.dot_size_range[1]), 1)
-            speed = random.uniform(1, self.speed_factor) * ((size / self.dot_size_range[1]) * 200)
+            speed = random.uniform(1, self.speed_factor) * (size / self.dot_size_range[1])
             phase = random.uniform(0, 2 * math.pi)  # Random phase for sine wave motion
             self.dots.append([x, y, size, speed, phase])
 

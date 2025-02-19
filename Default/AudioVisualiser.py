@@ -261,7 +261,7 @@ class AudioVisualiser():
                                     oscilloscope_width=w, oscilloscope_height=h)
         hud = HUD((w,h))
         # Create a DotField instance
-        dot_field = DotField(dot_field_width=w, dot_field_height=h, dot_count=100, dot_size_range=(2, 5), speed_factor=5, direction="left", dot_color=(0,0,0), opacity=64)
+        dot_field = DotField(dot_field_width=w, dot_field_height=h, dot_count=100, dot_size_range=(2, 5), speed_factor=3, direction="left", dot_color=(0,0,0), opacity=64)
         # Program variables:
         running = True
         song_name_text = ""
@@ -468,10 +468,6 @@ class AudioVisualiser():
                 image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(album_art, 2), (w,h))
                 screen.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
 
-            # dot_field.speed_factor = 5 * bass_reading
-            dot_field.update(bass_reading)
-            screen.blit(dot_field.surface, (0, 0))
-
             # Album Art colouring
             # Colour avg
             if album_art_colouring and media_mode != "None":
@@ -481,6 +477,10 @@ class AudioVisualiser():
                     sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy,
                     sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
                 )
+
+            # Update the visualiser
+            dot_field.update(bass_reading)
+            dot_field_rect = dot_field.surface.get_rect(center=(w/2,h/2))
 
             # Update the visualiser
             visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness, bar_height)
@@ -501,6 +501,7 @@ class AudioVisualiser():
             if visualiser_image == "None":
                 # screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
                 # screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+                screen.blit(dot_field.surface, dot_field_rect)
                 screen.blit(visualiser.surface, visualiser_rect)
                 # Blit the oscilloscope surface onto the main screen
                 screen.blit(oscilloscope.surface, oscilloscope_rect)
@@ -511,6 +512,7 @@ class AudioVisualiser():
                 mask_main = pygame.Mask((w,h))
                 mask1 = pygame.mask.from_surface(visualiser.surface)
                 mask2 = pygame.mask.from_surface(oscilloscope.surface)
+                mask3 = pygame.mask.from_surface(dot_field.surface)
 
                 # Make the Filter
                 if visualiser_image == "Rainbow": 
@@ -534,6 +536,7 @@ class AudioVisualiser():
                     filter.blit(image_scaled, image_scaled.get_rect().topleft)
 
                 # Combine the visualiser masks
+                mask_main.draw(mask3, dot_field_rect.topleft)
                 mask_main.draw(mask1, visualiser_rect.topleft)
                 mask_main.draw(mask2, oscilloscope_rect.topleft)
                 mask_surface = mask_main.to_surface(setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0))
