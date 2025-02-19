@@ -30,7 +30,6 @@ from Audio.AudioProcess import AudioProcess
 
 from pathlib import Path
 
-
 #####################################
 #            Functions              #
 #####################################
