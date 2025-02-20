@@ -19,49 +19,73 @@ class DotField():
 
         # Initialize dots with random positions and sizes
         self.dots = []
-        self._generate_dots()
+        for i in range(self.dot_count):
+            self.dots.append(self._generate_dot())
 
-    def update(self, bass_reading):
+    def update(self, bass_reading, dot_count, dots_speed_factor):
         # Clear the dot field surface
         self.surface.fill((255, 255, 255))
         self.surface.set_colorkey((255, 255, 255))
 
+        # Update dot count
+        self._update_dot_count(dot_count)
+        self._update_dots_speed(dots_speed_factor)
+
         # Update and render dots
-        for dot in self.dots:
-            x, y, size, speed, phase = dot
-            # dot[3] is dot's original speed
-            speed = dot[3] * self.speed_factor * bass_reading  # Adjust speed based on bass reading
+        if dot_count > 0:
+            for dot in self.dots:
+                x, y, size, speed, phase = dot
+                # dot[3] is dot's original speed
+                speed = dot[3] * self.speed_factor * bass_reading  # Adjust speed based on bass reading
 
-            # Update X pos
-            if self.direction == "right":
-                x += speed
-                if x > self.width:
-                    x = 0
-            elif self.direction == "left":
-                x -= speed
-                if x < 0:
-                    x = self.width
+                # Update X pos
+                if self.direction == "right":
+                    x += speed
+                    if x > self.width:
+                        x = 0
+                elif self.direction == "left":
+                    x -= speed
+                    if x < 0:
+                        x = self.width
 
-            # Apply sine wave motion to the y-coordinate
-            y += int(math.sin(x / 20 + phase) * 10)
-            
-            # Render
-            pygame.draw.circle(self.surface, self.dot_color, (int(x), int(y)), size)
+                # Apply sine wave motion to the y-coordinate
+                y += int(math.sin(x / 20 + phase) * 10)
+                
+                # Render
+                pygame.draw.circle(self.surface, self.dot_color, (int(x), int(y)), size)
 
-            # Store new xpos
-            dot[0] = x
+                # Store new xpos
+                dot[0] = x
 
-    def _generate_dots(self):
-        # Initialize dots with random positions and sizes
-        self.dots = []
-        for _ in range(self.dot_count):
-            x = random.randint(0, self.width)
-            y = random.randint(0, self.height)
-            # Min size 1
-            size = max(random.uniform(self.dot_size_range[0], self.dot_size_range[1]), 1)
-            speed = random.uniform(1, self.speed_factor) * (size / self.dot_size_range[1])
-            phase = random.uniform(0, 2 * math.pi)  # Random phase for sine wave motion
-            self.dots.append([x, y, size, speed, phase])
+    def _generate_dot(self):
+        x = random.randint(0, self.width)
+        y = random.randint(0, self.height)
+        # Min size 1
+        size = max(random.uniform(self.dot_size_range[0], self.dot_size_range[1]), 1)
+        speed = random.uniform(1, self.speed_factor) * (size / self.dot_size_range[1])
+        phase = random.uniform(0, 2 * math.pi)  # Random phase for sine wave motion
+
+        return [x, y, size, speed, phase]
+    
+    def _update_dot_count(self, dot_count):        
+        # Adding Dots
+        if dot_count > self.dot_count:
+            self.dots.extend(self._generate_dot() for _ in range(dot_count - self.dot_count))
+        
+        # Removing Dots
+        elif dot_count < self.dot_count:
+            self.dots = self.dots[:dot_count]
+        
+        # Update dot count
+        self.dot_count = dot_count
+
+    def _update_dots_speed(self, dots_speed_factor):
+        # Update all dots speed if changed  
+        if self.speed_factor != dots_speed_factor:
+            for dot in self.dots:
+                dot[3] = random.uniform(1, self.speed_factor) * (dot[2] / self.dot_size_range[1])
+
+            self.speed_factor = dots_speed_factor
 
     def resize_surface(self, width, height, opacity=None):
         ratio = width / self.width
@@ -83,4 +107,6 @@ class DotField():
         self.dot_count = int(self.dot_count * ratio)
 
         # Re-generate dots
-        self._generate_dots()
+        self.dots = []
+        for i in range(self.dot_count):
+            self.dots.append(self._generate_dot())

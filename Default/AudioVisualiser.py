@@ -144,6 +144,12 @@ class AudioVisualiser():
         oscilloscope_normalisation = config.getboolean('Customisation', 'OscilloscopeNormalisation')
         oscilloscope_acdc = config.get('Customisation', 'OscilloscopeACDC')
 
+        dot_count = config.getint('Customisation', 'ParticleCount')
+        dot_size_range = tuple(map(float, config.get(
+            'Customisation', 'ParticleSizeRange').split(',')))
+        dots_speed_factor = config.getfloat('Customisation', 'ParticleSpeed')
+        dots_direction = config.get('Customisation', 'ParticleDirection')
+
         no_frame = config.getboolean('Customisation', 'NOFRAME')
         fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
         background_scale = config.get('Customisation', 'BackgroundScale')
@@ -261,7 +267,9 @@ class AudioVisualiser():
                                     oscilloscope_width=w, oscilloscope_height=h)
         hud = HUD((w,h))
         # Create a DotField instance
-        dot_field = DotField(dot_field_width=w, dot_field_height=h, dot_count=100, dot_size_range=(2, 5), speed_factor=3, direction="left", dot_color=(0,0,0), opacity=64)
+        dot_field = DotField(dot_field_width=w, dot_field_height=h, 
+                             dot_count=dot_count, dot_size_range=dot_size_range, speed_factor=dots_speed_factor, direction=dots_direction, 
+                             dot_color=(0,0,0), opacity=64)
         # Program variables:
         running = True
         song_name_text = ""
@@ -479,7 +487,7 @@ class AudioVisualiser():
                 )
 
             # Update the visualiser
-            dot_field.update(bass_reading)
+            dot_field.update(bass_reading, dot_count, dots_speed_factor)
             dot_field_rect = dot_field.surface.get_rect(center=(w/2,h/2))
 
             # Update the visualiser
@@ -623,6 +631,9 @@ class AudioVisualiser():
             smoothing_factor = options_window.smoothing_factor.get()
             background_fade_duration = options_window.fade_duration.get()
             oscilloscope.gain = options_window.oscilloscope_gain.get()
+            low_pass_bass_reading = options_window.bass_low_pass.get()
+            dot_count = options_window.dot_count.get()
+            dots_speed_factor = options_window.dot_speed_factor.get()
             # For media
             if media_mode != "None":
                 sp.media_update_rate = options_window.media_update_rate.get()
@@ -632,27 +643,27 @@ class AudioVisualiser():
                 flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
             # Positioning
             if options_window.selected_element.get() == "Album Art":
-                album_art_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                album_art_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Song Name":
-                song_name_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                song_name_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Artist Name":
-                artist_name_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                artist_name_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Visualiser Position":
-                visualiser_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                visualiser_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Visualiser Size":
-                visualiser_size = (options_window.x_position.get(),
-                                    options_window.y_position.get())
+                visualiser_size = (options_window.x_value.get(),
+                                    options_window.y_value.get())
                 visualiser.resize_surface(visualiser_size, w, h)
             if options_window.selected_element.get() == "Oscilloscope Position":
                 oscilloscope_position = (
-                    options_window.x_position.get(), options_window.y_position.get())
+                    options_window.x_value.get(), options_window.y_value.get())
             if options_window.selected_element.get() == "Oscilloscope Size":
-                oscilloscope_size = (options_window.x_position.get(),
-                                    options_window.y_position.get())
+                oscilloscope_size = (options_window.x_value.get(),
+                                    options_window.y_value.get())
                 oscilloscope.resize_surface(oscilloscope_size, w, h)
 
             # Periodically call the Tkinter event loop
