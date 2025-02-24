@@ -9,7 +9,6 @@ import colorsys
 import asyncio
 import threading
 
-
 from dotenv import load_dotenv
 from PIL import Image
 from pathlib import Path

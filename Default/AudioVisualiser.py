@@ -187,6 +187,7 @@ class AudioVisualiser():
         #####################################
         # Initialize PyAudio Object
         p = PyAudioWrapper(CHUNK)
+        await p.setup()
 
         #####################################
         #             GRAPHICS              #
@@ -329,11 +330,8 @@ class AudioVisualiser():
                             dot_field_option_counter = abs((dot_field_option_counter-1) % len(dot_field_options))
                             dot_field.direction = dot_field_options[dot_field_option_counter]
                     if event.key == pygame.K_r:
-                        # Restart AV
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
-                    if event.key == pygame.K_r:
-                        # Restart AV
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+                        # Re-Initialize PyAudio
+                        await p.setup()
                     if event.key == pygame.K_q:
                         # Quit AV
                         self.re_run = False
@@ -433,6 +431,13 @@ class AudioVisualiser():
                     # win32gui.UpdateLayeredWindow(hwnd, None, None, None, None, None, win32api.RGB(*background_colour), None, win32con.LWA_COLORKEY)
                     # if media_mode == "Spotify":
                     #     spotify_icon = pygame.transform.scale_by(spotify_icon, w/OriginalAppResolution[0])
+
+            # Detect change in audio device
+            # Im not too sure how reliable this is, should still catch most cases of audio device change
+            # ok this isn't working currently, could be fixed one day maybe
+            if p.default_speakers['index'] is not p.get_default_speakers()['index']:
+                # Re-setup for new speakers
+                await p.setup()
 
             # AUDIO PROCESSING
             log_fft_data, max_value, bass_reading = audio_processor.perform_FFT(CHUNK, num_of_bars, bass_pump, smoothing_factor, low_pass_bass_reading, p)
@@ -628,6 +633,7 @@ class AudioVisualiser():
             frame_rate = options_window.frame_rate.get()
             num_of_bars = options_window.num_of_bars.get()
             bass_pump = options_window.bass_pump.get()
+            bar_thickness = options_window.bars_width.get()
             smoothing_factor = options_window.smoothing_factor.get()
             background_fade_duration = options_window.fade_duration.get()
             oscilloscope.gain = options_window.oscilloscope_gain.get()

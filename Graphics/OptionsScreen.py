@@ -35,12 +35,12 @@ class OptionsScreen():
 
         self.album_art_size = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtSize'))
         self.album_art_colour_vibrancy = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtColourVibrancy'))
+        self.bars_width = tk.DoubleVar(value=config.getfloat('Customisation', 'BarThickness'))
         self.album_art_flip_interval = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtFlipInterval'))
         self.album_art_flip_duration = tk.DoubleVar(value=config.getfloat('Customisation', 'AlbumArtFlipDuration'))
-        self.fade_duration = tk.DoubleVar(value=config.getfloat('Customisation', 'BackgroundFadeDuration'))
 
         self.oscilloscope_gain = tk.DoubleVar(value=config.getfloat('Customisation', 'OscilloscopeGain'))
-        self.oscilloscope_time_frame = tk.DoubleVar(value=config.getfloat('Customisation', 'OscilloscopeTimeFrame'))
+        self.fade_duration = tk.DoubleVar(value=config.getfloat('Customisation', 'BackgroundFadeDuration'))
         self.bass_low_pass = tk.IntVar(value=config.getint('Customisation', 'BassLowPass'))
         self.dot_count = tk.IntVar(value=config.getint('Customisation', 'ParticleCount'))
         self.dot_speed_factor = tk.DoubleVar(value=config.getfloat('Customisation', 'ParticleSpeed'))
@@ -69,12 +69,12 @@ class OptionsScreen():
         # Middle
         self.create_slider("Album Art Size", self.album_art_size, 0.5, 5, 0.05, 0.50, 75, "white", ("Helvetica", 14))
         self.create_slider("Colour Vibrancy", self.album_art_colour_vibrancy, 0, 1, 0.05, 0.50, 175, "white", ("Helvetica", 14))
-        self.create_slider("Fade Duration", self.fade_duration, 0.25, 2, 0.25, 0.50, 275, "white", ("Helvetica", 14))
+        self.create_slider("Bars Width", self.bars_width, 0.1, 1, 0.01, 0.50, 275, "white", ("Helvetica", 14))
         self.create_slider("Album Art Flip Interval", self.album_art_flip_interval, 0, 10, 0.5, 0.50, 375, "white", ("Helvetica", 14))
         self.create_slider("Album Art Flip Duration", self.album_art_flip_duration, 0, 1, 0.1, 0.50, 475, "white", ("Helvetica", 14))
         # Right
         self.create_slider("Oscilloscope Gain", self.oscilloscope_gain, 0, 1, 0.025, 0.80, 75, "white", ("Helvetica", 14))
-        self.create_slider("Oscilloscope Time Frame", self.oscilloscope_time_frame, 0, 1, 0.05, 0.80, 175, "white", ("Helvetica", 14))
+        self.create_slider("Fade Duration", self.fade_duration, 0.25, 2, 0.25, 0.80, 175, "white", ("Helvetica", 14))
         self.create_slider("Bass Effect Low Pass", self.bass_low_pass, 20, 1000, 5, 0.80, 275, "white", ("Helvetica", 14))
         self.create_slider("Particle Count", self.dot_count, 0, 200, 1, 0.80, 375, "white", ("Helvetica", 14))
         self.create_slider("Particle Speed Factor", self.dot_speed_factor, 1, 10, 0.25, 0.80, 475, "white", ("Helvetica", 14))
