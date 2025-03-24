@@ -40,7 +40,7 @@ class AudioProcess():
         sample_rate = p.default_speakers["defaultSampleRate"]
         desired_freq = low_pass_bass_reading
         freqs = np.fft.fftfreq(len(smooth_log_fft_data), d=1/sample_rate)
-        closest_index = np.argmin(np.abs(freqs - desired_freq))
+        closest_index = max(np.argmin(np.abs(freqs - desired_freq)), 1)
         
         bass_region = log_fft_data[:closest_index]
         bass_reading = np.max(bass_region)

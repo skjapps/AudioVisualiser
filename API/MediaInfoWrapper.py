@@ -6,8 +6,8 @@ from spotipy.cache_handler import CacheFileHandler
 import shutil
 import os
 import colorsys
+import asyncio
 import threading
-import sys
 
 from dotenv import load_dotenv
 from PIL import Image
@@ -16,15 +16,21 @@ from pathlib import Path
 from Default import Functions
 
 # WinRT is now winsdk
-from winsdk.windows.media.control import \
-    GlobalSystemMediaTransportControlsSessionManager as MediaManager
-from winsdk.windows.storage.streams import \
-    DataReader, Buffer, InputStreamOptions
+import winsdk.windows.media.control as wmc # for media info
+import winsdk.windows.storage.streams as streams # For data stream
+
+
+def list_active_threads():
+    threads = threading.enumerate()
+    print(f"Active threads ({len(threads)}):")
+    for thread in threads:
+        print(f"- {thread.name}")
 
 #####################################
 #           SPOTIPY/Winsdk          #
 #####################################
 class MediaInfoWrapper():
+    
     def __init__(self, mode, current_tick, cache_limit, media_update_rate):
         # Setup
         self.mode = mode
@@ -61,28 +67,22 @@ class MediaInfoWrapper():
         
         # private, setup
         self._sp_last_update = current_tick
-        self._lock = threading.Lock()
 
         # Make cache folders
         if not os.path.exists(Functions.resource_path('cache/')):
             os.makedirs(Functions.resource_path('cache/'))
             os.makedirs(Functions.resource_path('cache/img/'))
-
-        # First time get data
-        self.get_data()
     
     # Returns true for update, otherwise no update, i.e: skip album art
-    def update(self, current_tick):
+    async def update(self, current_tick):
         now = current_tick
         # 5000 ms = 5 seconds
         # Reduce api calls for now (IMPROVE WITH INTELLIGENT 429 error)
         if now - self._sp_last_update > (1000 * self.media_update_rate):
             # Reset timer
             self._sp_last_update = now
-
-            # Start a new thread to get data
-            threading.Thread(target=self.get_data).start()
-            # self.get_data()
+            # Get data
+            await self.get_data()
 
             # print("Updated spotify data \n")
             
@@ -91,49 +91,71 @@ class MediaInfoWrapper():
             self.updated = False
 
     # if self.results are none, the data failed.
-    def get_data(self):
-        with self._lock:
-            try:
-                if self.mode == "Spotify" :
-                    self.results = self.sp.currently_playing()
-                    # print(self.results)
-                    # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                    if (self.results['item'] != self.item):
-                        self.changed = True
-                    else:
-                        self.changed = False
-                    # Set media related info
-                    self.item = self.results['item'] # The item holds a lot of unique data
-                    self.song_name = self.results['item']['name']
-                    self.artist_name = ""
-                    for artist in self.results['item']['artists'] : self.artist_name += (str(artist['name']) + ", ")
-                    self.artist_name = self.artist_name[:-2]
-                    # print(self.results['is_playing'])
-                    self.isPlaying = self.results['is_playing']
-                    # Cache Album Art
-                    self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
-                    artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
-                    # print(artist_info)
-                    self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
-                    # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-                # elif self.mode == "winsdk" :
-                #     # Not caching windows album art data, no need.
-                #     self.results = asyncio.run(self.get_media_info())
-                #     self.song_name = self.results['title']
-                #     self.artist_name = self.results['artist']
-                #     print(self.artist_name)
-                #     print(self.song_name)
-                #     asyncio.run(self.get_album_art_win())
-                #     self.get_avg_img_colour(self.album_art_data)
-            except:
-                # Return Default Values...
-                # print("return default values \n")
-                self.song_name = "Loading..."
-                self.artist_name = "Play Spotify Music..."
-                self.album_art_data = self.artist_image_data = open(Functions.resource_path('assets/ico/ico.png'), 'rb').read()
-                self.results = None
+    async def get_data(self):
+        try:
+            if self.mode == "Spotify" :
+                # print("Calling Spotify (2x)")
+                self.results = self.sp.currently_playing()
+                # print(self.results)
+                if (self.results['item'] != self.item):
+                    self.changed = True
+                else:
+                    self.changed = False
+                # Set media related info
+                self.item = self.results['item'] # The item holds a lot of unique data
+                self.song_name = self.results['item']['name']
+                self.artist_name = ""
+                for artist in self.results['item']['artists'] : self.artist_name += (str(artist['name']) + ", ")
+                self.artist_name = self.artist_name[:-2]
+                # print(self.results['is_playing'])
+                self.isPlaying = self.results['is_playing']
+                # Cache Album Art
+                self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
+                # print(artist_info)
+                self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+                # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
+            elif self.mode == "winsdk" :
+                # Not caching windows album art data, no need.
+                self.song_name, self.artist_name, self.album_art_data = await self.get_media_info()
+                self.artist_image_data = self.album_art_data # both are album art, as theres no artist image - to improve
+                self.get_avg_img_colour(self.album_art_data)
+        except:
+            # Return Default Values...
+            # print("return default values \n")
+            self.song_name = "Loading..."
+            self.artist_name = "Play Spotify Music..."
+            self.album_art_data = self.artist_image_data = open(Functions.resource_path('assets/ico/ico.png'), 'rb').read()
+            self.results = None
+
+    # getting data with WinSDK
+    async def get_media_info(self):
+        sessions = await wmc.GlobalSystemMediaTransportControlsSessionManager.request_async()
+        current_session = sessions.get_current_session()
+        if current_session:
+            info = await current_session.try_get_media_properties_async()
+            # dir(info) = 'album_artist', 'album_title', 'album_track_count', 'artist', 'genres', 'playback_type', 'subtitle', 'thumbnail', 'title', 'track_number'
+
+            # Get album art as a RandomAccessStreamReference
+            thumbnail = info.thumbnail
+            if thumbnail:
+                list_active_threads()
+                stream = await thumbnail.open_read_async()
+                size = stream.size
+                buffer = streams.Buffer(size)
+                await stream.read_async(buffer, size, streams.InputStreamOptions.NONE)
                 
-            # self.results = None              
+                # Use DataReader to read bytes from the buffer
+                data_reader = streams.DataReader.from_buffer(buffer)
+                byte_array = bytearray(size)
+                data_reader.read_bytes(byte_array)
+                # return the byte_array as media info
+
+                # image = Image.open(BytesIO(byte_array))
+                # image.show()
+
+            # in order: song_name, artist_name, album_art_data
+            return info.title, info.artist, byte_array
             
     # Cache Album Art
     # Also saves the average colour of the current album art to "Colour"
@@ -221,53 +243,3 @@ class MediaInfoWrapper():
                     total_size += os.path.getsize(fp)
 
         return total_size
-    
-    # def get_canvas_token(self):
-    #     CANVAS_TOKEN_URL = 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player'
-    #     response = requests.get(CANVAS_TOKEN_URL)
-    #     if response.status_code == 200:
-    #         return response.json()['accessToken']
-    #     else:
-    #         print(f"Error getting canvas token: {response.status_code} {response.text}")
-    #         return None
-
-    # def _get_personal_token(client_id, client_secret, refresh_token):
-    #     PERSONAL_TOKEN_URL = 'https://accounts.spotify.com/api/token'
-    #     auth_str = f"{client_id}:{client_secret}"
-    #     b64_auth_str = base64.b64encode(auth_str.encode()).decode()
-    #     headers = {
-    #         'Authorization': f'Basic {b64_auth_str}',
-    #         'Content-Type': 'application/x-www-form-urlencoded'
-    #     }
-    #     data = {
-    #         'grant_type': 'refresh_token',
-    #         'refresh_token': refresh_token
-    #     }
-    #     response = requests.post(PERSONAL_TOKEN_URL, headers=headers, data=data)
-    #     if response.status_code == 200:
-    #         return response.json()['access_token']
-    #     else:
-    #         print(f"Error getting personal token: {response.status_code} {response.text}")
-    #         return None
-
-    # def get_canvases(self, song_id, canvas_token):
-    #     CANVAS_API_URL = 'https://api.spotify.com/v1/tracks'
-    #     headers = {
-    #         'Authorization': f'Bearer {canvas_token}'
-    #     }
-    #     canvas = None
-    #     track_id = track['track']['id']
-    #     response = requests.get(f"{CANVAS_API_URL}/{track_id}", headers=headers)
-    #     if response.status_code == 200:
-    #         track_info = response.json()
-    #         canvas_url = track_info.get('album', {}).get('images', [{}]).get('url')
-    #         if canvas_url and canvas_url.endswith('.mp4'):
-    #             canvas = ({
-    #                 'uri': track['track']['uri'],
-    #                 'name': track['track']['name'],
-    #                 'previewUrl': track['track']['preview_url'],
-    #                 'canvasUrl': canvas_url
-    #             })
-    #     else:
-    #         print(f"Error getting canvas for track {track_id}: {response.status_code} {response.text}")
-    #     return canvas

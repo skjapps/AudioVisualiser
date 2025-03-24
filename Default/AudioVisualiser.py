@@ -1,3 +1,4 @@
+import asyncio
 import math
 import pygame
 import io
@@ -24,6 +25,7 @@ from Graphics.OptionsScreen import OptionsScreen
 from Graphics.Oscilloscope import Oscilloscope
 from Graphics.DotField import DotField
 from Graphics.HUD import HUD
+from Graphics.OpenGLConverter import OpenGLConverter
 from API.MediaInfoWrapper import MediaInfoWrapper
 from Audio.PyAudioWrapper import PyAudioWrapper
 from Audio.AudioProcess import AudioProcess
@@ -80,9 +82,9 @@ class AudioVisualiser():
     def __init__(self):
         self.re_run = True
         # while self.re_run:
-        self.main()
+        asyncio.run(self.main())
 
-    def main(self):
+    async def main(self):
         #####################################
         #              Config               #
         #####################################
@@ -143,6 +145,12 @@ class AudioVisualiser():
         oscilloscope_normalisation = config.getboolean('Customisation', 'OscilloscopeNormalisation')
         oscilloscope_acdc = config.get('Customisation', 'OscilloscopeACDC')
 
+        dot_count = config.getint('Customisation', 'ParticleCount')
+        dot_size_range = tuple(map(float, config.get(
+            'Customisation', 'ParticleSizeRange').split(',')))
+        dots_speed_factor = config.getfloat('Customisation', 'ParticleSpeed')
+        dots_direction = config.get('Customisation', 'ParticleDirection')
+
         no_frame = config.getboolean('Customisation', 'NOFRAME')
         fullscreen = config.getboolean('Customisation', 'FULLSCREEN')
         background_scale = config.get('Customisation', 'BackgroundScale')
@@ -180,6 +188,7 @@ class AudioVisualiser():
         #####################################
         # Initialize PyAudio Object
         p = PyAudioWrapper(CHUNK)
+        await p.setup()
 
         #####################################
         #             GRAPHICS              #
@@ -198,8 +207,12 @@ class AudioVisualiser():
         # Init pygame graphics engine
         pygame.init()
         screen = pygame.display.set_mode(OriginalAppResolution, flags=(
-            pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)))
-        w, h = pygame.display.get_surface().get_size()
+            pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)))
+        w, h = screen.get_size()
+
+        # OpenGL context
+        texId = OpenGLConverter.setupOpenGL(w,h)
+
         clock = pygame.time.Clock()
         # Fonts setup
         available_fonts = pygame.font.get_fonts()
@@ -234,20 +247,21 @@ class AudioVisualiser():
         spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
         spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
         # Load Spotify Data
-        if media_mode == "Spotify":
+        if media_mode == "Spotify" or media_mode == "winsdk":
             sp = MediaInfoWrapper(media_mode, pygame.time.get_ticks(),
                                     cache_limit, media_update_rate)
+            await sp.get_data()
             album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
             album_art = pygame.transform.smoothscale_by(
                 album_art, ResizedAlbumArtSize)
-            artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-            artist_image = pygame.transform.smoothscale_by(
-                artist_image, ResizedAlbumArtSize)
+            if media_mode == "Spotify":
+                artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                artist_image = pygame.transform.smoothscale_by(
+                    artist_image, ResizedAlbumArtSize)
             sp.updated = False # Need to fix logic here...
-
-        # Create an ImageFlipper instance
-        flipper = ImageFlipper(album_art, artist_image, flip_interval=(
-            1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))
+            # Create an ImageFlipper instance
+            flipper = ImageFlipper(album_art, artist_image, flip_interval=(
+                1000 * album_art_flip_interval), flip_duration=(1000 * album_art_flip_duration))            
         
         #####################################
         #             Main loop             #
@@ -257,9 +271,13 @@ class AudioVisualiser():
         visualiser = Visualiser(visualiser_size, visualiser_width=w, visualiser_height=h)
         oscilloscope = Oscilloscope(oscilloscope_size, oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
                                     oscilloscope_width=w, oscilloscope_height=h)
+        # Oscilloscope Resize (calling once to fix some weird positioning bug, to fix...)
+        oscilloscope.resize_surface(oscilloscope_size, w, h)
         hud = HUD((w,h))
         # Create a DotField instance
-        dot_field = DotField(dot_field_width=w, dot_field_height=h, dot_count=100, dot_size_range=(2, 5), speed_factor=5, direction="left", dot_color=(0,0,0), opacity=64)
+        dot_field = DotField(dot_field_width=w, dot_field_height=h, 
+                             dot_count=dot_count, dot_size_range=dot_size_range, speed_factor=dots_speed_factor, direction=dots_direction, 
+                             dot_color=(0,0,0), opacity=64)
         # Program variables:
         running = True
         song_name_text = ""
@@ -319,11 +337,8 @@ class AudioVisualiser():
                             dot_field_option_counter = abs((dot_field_option_counter-1) % len(dot_field_options))
                             dot_field.direction = dot_field_options[dot_field_option_counter]
                     if event.key == pygame.K_r:
-                        # Restart AV
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
-                    if event.key == pygame.K_r:
-                        # Restart AV
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+                        # Re-Initialize PyAudio
+                        await p.setup()
                     if event.key == pygame.K_q:
                         # Quit AV
                         self.re_run = False
@@ -357,7 +372,7 @@ class AudioVisualiser():
                         # call a resize event
                         pygame.event.post(pygame.event.Event(pygame.VIDEORESIZE))
                 # Mouse Clicks
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN and media_mode == "None":
                     # If spotify button is clicked (postions of the mouse click)
                     # print(event.pos, "\n\n")
                     flipper_rect = pygame.rect.Rect((album_art_position[0] * w - (flipper.current_image.get_width()/2),
@@ -371,9 +386,10 @@ class AudioVisualiser():
                         webbrowser.open(
                             sp.results['item']['external_urls']['spotify'], new=0, autoraise=True)
                 # Resizing window
-                if event.type == pygame.VIDEORESIZE:
+                # OpenGL is trolling here so its vibes based now...? 
+                # if event.type == pygame.VIDEORESIZE:
                     #  Get canvas size when resized (on instant)
-                    w, h = pygame.display.get_surface().get_size()
+                    w, h = screen.get_size()
 
                     # Changes for resize
                     # Visualiser Resize
@@ -404,7 +420,8 @@ class AudioVisualiser():
                     artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
                     artist_image = pygame.transform.scale_by(
                         artist_image, ResizedAlbumArtSize)
-                    flipper.change_images(album_art, artist_image)
+                    if media_mode == "None":
+                        flipper.change_images(album_art, artist_image)
                     # Background
                     if background_style == "GIF" or visualiser_image == "Background":
                         threads = []
@@ -423,23 +440,31 @@ class AudioVisualiser():
                     # if media_mode == "Spotify":
                     #     spotify_icon = pygame.transform.scale_by(spotify_icon, w/OriginalAppResolution[0])
 
+            # Detect change in audio device
+            # Im not too sure how reliable this is, should still catch most cases of audio device change
+            # ok this isn't working currently, could be fixed one day maybe
+            if p.default_speakers['index'] is not p.get_default_speakers()['index']:
+                # Re-setup for new speakers
+                await p.setup()
+
             # AUDIO PROCESSING
             log_fft_data, max_value, bass_reading = audio_processor.perform_FFT(CHUNK, num_of_bars, bass_pump, smoothing_factor, low_pass_bass_reading, p)
             
             # SPOTIFY PROCESSING
-            sp.update(pygame.time.get_ticks())
-            if sp.updated:
-                try:
-                    album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
-                    album_art = pygame.transform.smoothscale_by(
-                        album_art, ResizedAlbumArtSize)
-                    artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
-                    artist_image = pygame.transform.smoothscale_by(
-                        artist_image, ResizedAlbumArtSize)
-                    flipper.change_images(album_art, artist_image)
-                    sp.updated = False
-                except Exception as error:
-                    print(error, "\n\n")
+            if media_mode != "None":
+                await sp.update(pygame.time.get_ticks())
+                if sp.updated:
+                    try:
+                        album_art = pygame.image.load(io.BytesIO(sp.album_art_data))
+                        album_art = pygame.transform.smoothscale_by(
+                            album_art, ResizedAlbumArtSize)
+                        artist_image = pygame.image.load(io.BytesIO(sp.artist_image_data))
+                        artist_image = pygame.transform.smoothscale_by(
+                            artist_image, ResizedAlbumArtSize)
+                        flipper.change_images(album_art, artist_image)
+                        sp.updated = False
+                    except Exception as error:
+                        print(error, "\n\n")
 
             # GRAPHICS PROCESSING
 
@@ -464,19 +489,19 @@ class AudioVisualiser():
                 image_scaled = pygame.transform.smoothscale(pygame.transform.gaussian_blur(album_art, 2), (w,h))
                 screen.blit(image_scaled, image_scaled.get_rect(center=(w//2,h//2)).topleft)
 
-            # dot_field.speed_factor = 5 * bass_reading
-            dot_field.update(bass_reading)
-            screen.blit(dot_field.surface, (0, 0))
-
             # Album Art colouring
             # Colour avg
-            if album_art_colouring:
+            if album_art_colouring and media_mode != "None":
                 scalar = 255 - max(sp.avg_colour_album_art)
                 Colour = (
                     sp.avg_colour_album_art[0] + scalar * album_art_colour_vibrancy,
                     sp.avg_colour_album_art[1] + scalar * album_art_colour_vibrancy,
                     sp.avg_colour_album_art[2] + scalar * album_art_colour_vibrancy
                 )
+
+            # Update the visualiser
+            dot_field.update(bass_reading, dot_count, dots_speed_factor)
+            dot_field_rect = dot_field.surface.get_rect(center=(w/2,h/2))
 
             # Update the visualiser
             visualiser.update(log_fft_data, max_value, album_art_colour_vibrancy, Colour, bar_thickness, bar_height)
@@ -497,6 +522,7 @@ class AudioVisualiser():
             if visualiser_image == "None":
                 # screen.blit(pygame.transform.flip(visualiser.surface, True, False), rect)
                 # screen.blit(pygame.transform.flip(visualiser.surface, False, True), rect)
+                screen.blit(dot_field.surface, dot_field_rect)
                 screen.blit(visualiser.surface, visualiser_rect)
                 # Blit the oscilloscope surface onto the main screen
                 screen.blit(oscilloscope.surface, oscilloscope_rect)
@@ -507,6 +533,7 @@ class AudioVisualiser():
                 mask_main = pygame.Mask((w,h))
                 mask1 = pygame.mask.from_surface(visualiser.surface)
                 mask2 = pygame.mask.from_surface(oscilloscope.surface)
+                mask3 = pygame.mask.from_surface(dot_field.surface)
 
                 # Make the Filter
                 if visualiser_image == "Rainbow": 
@@ -530,6 +557,7 @@ class AudioVisualiser():
                     filter.blit(image_scaled, image_scaled.get_rect().topleft)
 
                 # Combine the visualiser masks
+                mask_main.draw(mask3, dot_field_rect.topleft)
                 mask_main.draw(mask1, visualiser_rect.topleft)
                 mask_main.draw(mask2, oscilloscope_rect.topleft)
                 mask_surface = mask_main.to_surface(setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0))
@@ -545,19 +573,20 @@ class AudioVisualiser():
             #     screen.blit(spotify_icon, (w - spotify_icon.get_width(),
             #                                 0))
             # When data changes
-            if sp.changed:
-                if random_font_swap:
-                    font = random.choice(available_fonts)
-                    swap_font = True
-                if background_style == "GIF" or visualiser_image == "Background":
-                    # change background with fade when song changed...
-                    if (len(backgrounds) > 1):
-                        backgrounds[background_index].start_fade_out(
-                            background_fade_duration * 1000)
-                        backgrounds[(background_index + 1) % len(backgrounds)
-                                    ].start_fade_in(background_fade_duration * 1000)
-                        background_index = (background_index + 1) % len(backgrounds)
-                sp.changed = False
+            if media_mode != "None":
+                if sp.changed:
+                    if random_font_swap:
+                        font = random.choice(available_fonts)
+                        swap_font = True
+                    if background_style == "GIF" or visualiser_image == "Background":
+                        # change background with fade when song changed...
+                        if (len(backgrounds) > 1):
+                            backgrounds[background_index].start_fade_out(
+                                background_fade_duration * 1000)
+                            backgrounds[(background_index + 1) % len(backgrounds)
+                                        ].start_fade_in(background_fade_duration * 1000)
+                            background_index = (background_index + 1) % len(backgrounds)
+                    sp.changed = False
 
             if swap_font:
                 font_song_name = pygame.font.SysFont(
@@ -567,42 +596,47 @@ class AudioVisualiser():
                 swap_font = False
 
             # Render song name
-            if song_name_short:
-                song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
-            else:
-                song_name_text = sp.song_name
-            song_name = font_song_name.render(song_name_text,
-                                                True, Colour)
-            # Display song name
-            screen.blit(song_name, (w * song_name_position[0],
-                                    h - h * song_name_position[1]))
-
-            # Render artist name
-            artist_name = font_artist_name.render(sp.artist_name,
+            if media_mode != "None":
+                if song_name_short:
+                    song_name_text = re.split(r'[\(\-]', sp.song_name)[0].strip()
+                else:
+                    song_name_text = sp.song_name
+                song_name = font_song_name.render(song_name_text,
                                                     True, Colour)
-            # Display artist name
-            screen.blit(artist_name, (w * artist_name_position[0],
-                                    h - h * artist_name_position[1] + ResizedSongNameFontSize))
+                # Display song name
+                screen.blit(song_name, (w * song_name_position[0],
+                                        h - h * song_name_position[1]))
 
-            # Display album art
-            if (album_art != None) or (artist_image != None):
-                try:
-                    # Incase size changed
-                    ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
-                                                            h/OriginalAppResolution[1]) * 0.3
+                # Render artist name
+                artist_name = font_artist_name.render(sp.artist_name,
+                                                        True, Colour)
+                # Display artist name
+                screen.blit(artist_name, (w * artist_name_position[0],
+                                        h - h * artist_name_position[1] + ResizedSongNameFontSize))
 
-                    # Update the flipper
-                    flipper.update()
+                # Display album art
+                if (album_art != None) or (artist_image != None):
+                    try:
+                        # Incase size changed
+                        ResizedAlbumArtSize = album_art_size * max(w/OriginalAppResolution[0],
+                                                                h/OriginalAppResolution[1]) * 0.3
 
-                    # Render the current image
-                    flipper.render(screen, (w * album_art_position[0],
-                                        h - h * album_art_position[1]))
-                except Exception as error:
-                    print(error)
+                        # Update the flipper
+                        flipper.update()
+
+                        # Render the current image
+                        flipper.render(screen, (w * album_art_position[0],
+                                            h - h * album_art_position[1]))
+                    except Exception as error:
+                        print(error)
 
             # Update and draw HUD
             hud.update(media_mode, clock.get_fps())
             screen.blit(hud.surface, (0,0))
+
+            OpenGLConverter.surfaceToTexture(screen, texId)
+
+            OpenGLConverter.drawOpenGL(texId, w, h)
 
             # Update display
             pygame.display.flip()
@@ -610,38 +644,44 @@ class AudioVisualiser():
             # Get options changes
             frame_rate = options_window.frame_rate.get()
             num_of_bars = options_window.num_of_bars.get()
-            sp.media_update_rate = options_window.media_update_rate.get()
             bass_pump = options_window.bass_pump.get()
+            bar_thickness = options_window.bars_width.get()
             smoothing_factor = options_window.smoothing_factor.get()
-            album_art_size = options_window.album_art_size.get()
-            album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
             background_fade_duration = options_window.fade_duration.get()
-            flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
-            flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
             oscilloscope.gain = options_window.oscilloscope_gain.get()
+            low_pass_bass_reading = options_window.bass_low_pass.get()
+            dot_count = options_window.dot_count.get()
+            dots_speed_factor = options_window.dot_speed_factor.get()
+            # For media
+            if media_mode != "None":
+                sp.media_update_rate = options_window.media_update_rate.get()
+                album_art_size = options_window.album_art_size.get()
+                album_art_colour_vibrancy = options_window.album_art_colour_vibrancy.get()
+                flipper.flip_interval = 1000 * options_window.album_art_flip_interval.get()
+                flipper.flip_duration = 1000 * options_window.album_art_flip_duration.get()
             # Positioning
             if options_window.selected_element.get() == "Album Art":
-                album_art_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                album_art_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Song Name":
-                song_name_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                song_name_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Artist Name":
-                artist_name_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                artist_name_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Visualiser Position":
-                visualiser_position = (options_window.x_position.get(),
-                                        options_window.y_position.get())
+                visualiser_position = (options_window.x_value.get(),
+                                        options_window.y_value.get())
             if options_window.selected_element.get() == "Visualiser Size":
-                visualiser_size = (options_window.x_position.get(),
-                                    options_window.y_position.get())
+                visualiser_size = (options_window.x_value.get(),
+                                    options_window.y_value.get())
                 visualiser.resize_surface(visualiser_size, w, h)
             if options_window.selected_element.get() == "Oscilloscope Position":
                 oscilloscope_position = (
-                    options_window.x_position.get(), options_window.y_position.get())
+                    options_window.x_value.get(), options_window.y_value.get())
             if options_window.selected_element.get() == "Oscilloscope Size":
-                oscilloscope_size = (options_window.x_position.get(),
-                                    options_window.y_position.get())
+                oscilloscope_size = (options_window.x_value.get(),
+                                    options_window.y_value.get())
                 oscilloscope.resize_surface(oscilloscope_size, w, h)
 
             # Periodically call the Tkinter event loop
