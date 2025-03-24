@@ -44,7 +44,7 @@ class OpenGLConverter():
         return texId
     
     def drawOpenGL(texId, w, h):
-        glBindTexture(GL_TEXTURE_2D, texId, w, h)
+        glBindTexture(GL_TEXTURE_2D, texId)
 
         # Draw a textured quad equivalent to the pygame surface.
         glBegin(GL_QUADS)

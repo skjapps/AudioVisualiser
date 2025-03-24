@@ -25,6 +25,7 @@ from Graphics.OptionsScreen import OptionsScreen
 from Graphics.Oscilloscope import Oscilloscope
 from Graphics.DotField import DotField
 from Graphics.HUD import HUD
+from Graphics.OpenGLConverter import OpenGLConverter
 from API.MediaInfoWrapper import MediaInfoWrapper
 from Audio.PyAudioWrapper import PyAudioWrapper
 from Audio.AudioProcess import AudioProcess
@@ -206,8 +207,12 @@ class AudioVisualiser():
         # Init pygame graphics engine
         pygame.init()
         screen = pygame.display.set_mode(OriginalAppResolution, flags=(
-            pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)))
-        w, h = pygame.display.get_surface().get_size()
+            pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE | (pygame.NOFRAME * no_frame) | (pygame.FULLSCREEN * fullscreen)))
+        w, h = screen.get_size()
+
+        # OpenGL context
+        texId = OpenGLConverter.setupOpenGL(w,h)
+
         clock = pygame.time.Clock()
         # Fonts setup
         available_fonts = pygame.font.get_fonts()
@@ -266,6 +271,8 @@ class AudioVisualiser():
         visualiser = Visualiser(visualiser_size, visualiser_width=w, visualiser_height=h)
         oscilloscope = Oscilloscope(oscilloscope_size, oscilloscope_time_frame, oscilloscope_gain, p.default_speakers["defaultSampleRate"],
                                     oscilloscope_width=w, oscilloscope_height=h)
+        # Oscilloscope Resize (calling once to fix some weird positioning bug, to fix...)
+        oscilloscope.resize_surface(oscilloscope_size, w, h)
         hud = HUD((w,h))
         # Create a DotField instance
         dot_field = DotField(dot_field_width=w, dot_field_height=h, 
@@ -379,9 +386,10 @@ class AudioVisualiser():
                         webbrowser.open(
                             sp.results['item']['external_urls']['spotify'], new=0, autoraise=True)
                 # Resizing window
-                if event.type == pygame.VIDEORESIZE:
+                # OpenGL is trolling here so its vibes based now...? 
+                # if event.type == pygame.VIDEORESIZE:
                     #  Get canvas size when resized (on instant)
-                    w, h = pygame.display.get_surface().get_size()
+                    w, h = screen.get_size()
 
                     # Changes for resize
                     # Visualiser Resize
@@ -625,6 +633,10 @@ class AudioVisualiser():
             # Update and draw HUD
             hud.update(media_mode, clock.get_fps())
             screen.blit(hud.surface, (0,0))
+
+            OpenGLConverter.surfaceToTexture(screen, texId)
+
+            OpenGLConverter.drawOpenGL(texId, w, h)
 
             # Update display
             pygame.display.flip()
