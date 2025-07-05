@@ -1,11 +1,9 @@
-import pyaudiowpatch as pyaudio
+import pyaudio
 import numpy as np
 import asyncio
 
-# Using Pyaudio based version package
-# https://github.com/s0d3s/PyAudioWPatch/blob/master/examples/pawp_record_wasapi_loopback.py
 #####################################
-#           PyAudioWPatch           #
+#           Standard PyAudio        #
 #####################################
 class PyAudioWrapper():
     def __init__(self, chunk):
@@ -13,7 +11,6 @@ class PyAudioWrapper():
         self._chunk = chunk
         self._p = None
         self.default_speakers = None
-        self.default_speakers_loopback = None
         self.mono_data = None # The data being read
         self.stream = None
         
@@ -31,42 +28,40 @@ class PyAudioWrapper():
         
         # Make pyaudio object 
         self._p = pyaudio.PyAudio()
-        # Get default WASAPI speakers
+        # Get default input device
         self.default_speakers = self.get_default_speakers()
 
-        # Getting loopback solution
-        if not self.default_speakers["isLoopbackDevice"]:
-            for loopback in self._p.get_loopback_device_info_generator():
-                """
-                Try to find loopback device with same name(and [Loopback suffix]).
-                Unfortunately, this is the most adequate way at the moment.
-                """
-                if self.default_speakers["name"] in loopback["name"]:
-                    self.default_speakers_loopback = loopback
-                    break
-        else:
-            self.default_speakers_loopback = self.default_speakers
+        # Check if we got a valid device
+        if self.default_speakers is None:
+            raise RuntimeError("No default input device found")
 
         # Open audio stream with the selected device
         self.stream = self._p.open(format=pyaudio.paInt16,
-                                    channels=self.default_speakers_loopback["maxInputChannels"],
-                                    rate=int(self.default_speakers_loopback["defaultSampleRate"]),
+                                    channels=int(self.default_speakers["maxInputChannels"]),
+                                    rate=int(self.default_speakers["defaultSampleRate"]),
                                     frames_per_buffer=self._chunk,
                                     input=True,
-                                    input_device_index=self.default_speakers_loopback["index"],
+                                    input_device_index=int(self.default_speakers["index"]),
                                     stream_callback=self.read_mono)
-
 
     # Callback to get audio data (L channel only)
     def read_mono(self, in_data, frame_count, time_info, status):
         # Convert data to numpy array
         audio_data = np.frombuffer(in_data, dtype=np.int16)
         # Select every alternate value starting from index 0 (left channel)
-        self.mono_data = audio_data[::2]
+        # For mono input, use all data
+        if self.default_speakers is not None and int(self.default_speakers["maxInputChannels"]) == 1:
+            self.mono_data = audio_data
+        else:
+            self.mono_data = audio_data[::2]
         return (in_data, pyaudio.paContinue)
     
     def get_default_speakers(self):
-        # Get default WASAPI info
-        wasapi_info = self._p.get_host_api_info_by_type(pyaudio.paWASAPI)
-        # Get default WASAPI speakers
-        return self._p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
+        # Get default input device info
+        if self._p is None:
+            return None
+        try:
+            return self._p.get_device_info_by_index(int(self._p.get_default_input_device_info()["index"]))
+        except Exception as e:
+            print(f"Error getting default input device: {e}")
+            return None

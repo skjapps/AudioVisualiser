@@ -13,12 +13,7 @@ from dotenv import load_dotenv
 from PIL import Image
 from pathlib import Path
 
-from Default import Functions
-
-# WinRT is now winsdk
-import winsdk.windows.media.control as wmc # for media info
-import winsdk.windows.storage.streams as streams # For data stream
-
+from Default import functions
 
 def list_active_threads():
     threads = threading.enumerate()
@@ -27,7 +22,7 @@ def list_active_threads():
         print(f"- {thread.name}")
 
 #####################################
-#           SPOTIPY/Winsdk          #
+#           SPOTIPY ONLY           #
 #####################################
 class MediaInfoWrapper():
     
@@ -63,15 +58,15 @@ class MediaInfoWrapper():
                                         client_secret="bae6111d2ddf40f597c8dfb82c495227",
                                         redirect_uri="http://localhost:8080",
                                         cache_handler=CacheFileHandler(
-                                            cache_path=Functions.resource_path('.cache'))))
+                                            cache_path=functions.resource_path('.cache'))))
         
         # private, setup
         self._sp_last_update = current_tick
 
         # Make cache folders
-        if not os.path.exists(Functions.resource_path('cache/')):
-            os.makedirs(Functions.resource_path('cache/'))
-            os.makedirs(Functions.resource_path('cache/img/'))
+        if not os.path.exists(functions.resource_path('cache/')):
+            os.makedirs(functions.resource_path('cache/'))
+            os.makedirs(functions.resource_path('cache/img/'))
     
     # Returns true for update, otherwise no update, i.e: skip album art
     async def update(self, current_tick):
@@ -97,6 +92,15 @@ class MediaInfoWrapper():
                 # print("Calling Spotify (2x)")
                 self.results = self.sp.currently_playing()
                 # print(self.results)
+                
+                # Check if we got valid results and item
+                if self.results is None or self.results.get('item') is None:
+                    self.song_name = "No Song Playing"
+                    self.artist_name = "Play Spotify Music..."
+                    self.album_art_data = self.artist_image_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
+                    self.results = None
+                    return
+                
                 if (self.results['item'] != self.item):
                     self.changed = True
                 else:
@@ -110,70 +114,49 @@ class MediaInfoWrapper():
                 # print(self.results['is_playing'])
                 self.isPlaying = self.results['is_playing']
                 # Cache Album Art
-                self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                if self.results['item']['album']['images']:
+                    self.album_art_data = self.CacheImage(self.results['item']['album']['images'][0]['url'], True)
+                else:
+                    self.album_art_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
+                
                 artist_info = self.sp.artist(self.results['item']['artists'][0]['uri'])
                 # print(artist_info)
-                self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+                if artist_info and artist_info.get('images'):
+                    self.artist_image_data = self.CacheImage(artist_info['images'][0]['url'], False)
+                else:
+                    self.artist_image_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
                 # print(self.sp.current_user_recently_played(limit=1), "\n\n\n")
-            elif self.mode == "winsdk" :
-                # Not caching windows album art data, no need.
-                self.song_name, self.artist_name, self.album_art_data = await self.get_media_info()
-                self.artist_image_data = self.album_art_data # both are album art, as theres no artist image - to improve
-                self.get_avg_img_colour(self.album_art_data)
+            else:
+                # For non-Spotify modes, return default values
+                self.song_name = "No Media Info Available"
+                self.artist_name = "Use Spotify Mode"
+                self.album_art_data = self.artist_image_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
+                self.results = None
         except:
             # Return Default Values...
             # print("return default values \n")
             self.song_name = "Loading..."
             self.artist_name = "Play Spotify Music..."
-            self.album_art_data = self.artist_image_data = open(Functions.resource_path('assets/ico/ico.png'), 'rb').read()
+            self.album_art_data = self.artist_image_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
             self.results = None
 
-    # getting data with WinSDK
-    async def get_media_info(self):
-        sessions = await wmc.GlobalSystemMediaTransportControlsSessionManager.request_async()
-        current_session = sessions.get_current_session()
-        if current_session:
-            info = await current_session.try_get_media_properties_async()
-            # dir(info) = 'album_artist', 'album_title', 'album_track_count', 'artist', 'genres', 'playback_type', 'subtitle', 'thumbnail', 'title', 'track_number'
-
-            # Get album art as a RandomAccessStreamReference
-            thumbnail = info.thumbnail
-            if thumbnail:
-                list_active_threads()
-                stream = await thumbnail.open_read_async()
-                size = stream.size
-                buffer = streams.Buffer(size)
-                await stream.read_async(buffer, size, streams.InputStreamOptions.NONE)
-                
-                # Use DataReader to read bytes from the buffer
-                data_reader = streams.DataReader.from_buffer(buffer)
-                byte_array = bytearray(size)
-                data_reader.read_bytes(byte_array)
-                # return the byte_array as media info
-
-                # image = Image.open(BytesIO(byte_array))
-                # image.show()
-
-            # in order: song_name, artist_name, album_art_data
-            return info.title, info.artist, byte_array
-            
     # Cache Album Art
     # Also saves the average colour of the current album art to "Colour"
     # get_colour either true or false
     def CacheImage(self, url, get_colour):
         try:
             # Clear Cache above certain size
-            if (self.get_folder_size(Functions.resource_path('cache/')) >= (self.cache_limit * 2 ** 20)):
+            if (self.get_folder_size(functions.resource_path('cache/')) >= (self.cache_limit * 2 ** 20)):
                 # Remove the folder and its contents
-                shutil.rmtree(Functions.resource_path('cache/'))
+                shutil.rmtree(functions.resource_path('cache/'))
                 
                 # Make the folders
-                if not os.path.exists(Functions.resource_path('cache/')):
-                    os.makedirs(Functions.resource_path('cache/'))
-                    os.makedirs(Functions.resource_path('cache/img'))
+                if not os.path.exists(functions.resource_path('cache/')):
+                    os.makedirs(functions.resource_path('cache/'))
+                    os.makedirs(functions.resource_path('cache/img'))
 
             # Find the url
-            filename = Functions.resource_path('cache/img/' + url.split('/')[-1] + '.jpg')
+            filename = functions.resource_path('cache/img/' + url.split('/')[-1] + '.jpg')
             
             # Load image data and save if needed
             try:
@@ -198,12 +181,12 @@ class MediaInfoWrapper():
         image = Image.open(filename)
         # Convert the image to a NumPy array
         image_array = np.array(image)
-        # Calculate the average RGB values
-        self.avg_colour_album_art = np.mean(image_array, axis=(0, 1))
-
-        # Check if the result is a single number (greyscale or single channel...)
-        if np.isscalar(self.avg_colour_album_art):
-            self.avg_colour_album_art = np.array([self.avg_colour_album_art] * 3)
+        
+        # Calculate the average color
+        avg_color = np.mean(image_array, axis=(0, 1))
+        
+        # Convert to RGB values (0-255)
+        self.avg_colour_album_art = [int(avg_color[0]), int(avg_color[1]), int(avg_color[2])]
 
     def get_vibrant_img_colour(self, filename):
         # Load the image
@@ -211,28 +194,12 @@ class MediaInfoWrapper():
         # Convert the image to a NumPy array
         image_array = np.array(image)
         
-        # Normalize the RGB values to the range [0, 1]
-        image_array = image_array / 255.0
+        # Calculate the average color
+        avg_color = np.mean(image_array, axis=(0, 1))
         
-        # Convert RGB to HSV
-        hsv_image = np.zeros_like(image_array)
-        hsv_image[..., 0], hsv_image[..., 1], hsv_image[..., 2] = np.vectorize(colorsys.rgb_to_hsv)(
-            image_array[..., 0], image_array[..., 1], image_array[..., 2]
-        )
-        
-        # Find the index of the pixel with the highest saturation and value
-        max_saturation_value_index = np.argmax(hsv_image[..., 1] * hsv_image[..., 2])
-        
-        # Convert the index back to 2D coordinates
-        max_saturation_value_coords = np.unravel_index(max_saturation_value_index, hsv_image[..., 1].shape)
-        
-        # Get the RGB value of the most vibrant color
-        vibrant_color = image_array[max_saturation_value_coords]
-        
-        # Convert back to the range [0, 255]
-        self.vibrant_colour_album_art = (vibrant_color * 255).astype(int).tolist()
-        
-    # From https://stackoverflow.com/questions/1392413/calculating-a-directorys-size-using-python
+        # Convert to RGB values (0-255)
+        self.vibrant_colour_album_art = [int(avg_color[0]), int(avg_color[1]), int(avg_color[2])]
+
     def get_folder_size(self, start_path = '.'):
         total_size = 0
         for dirpath, dirnames, filenames in os.walk(start_path):

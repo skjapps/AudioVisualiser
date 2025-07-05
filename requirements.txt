@@ -3,7 +3,5 @@ numpy
 pygame-ce
 spotipy
 Pillow
-pyaudiowpatch
-winsdk
-pywin32
+pyaudio
 python-dotenv
