@@ -16,7 +16,7 @@ import webbrowser
 import threading
 import numpy as np
 
-from Default import Functions
+from Default import functions
 from Graphics.GifSprite import GifSprite
 from Graphics.VisualiserGraphics import Visualiser
 # from BackgroundManager import BackgroundManager
@@ -201,7 +201,7 @@ class AudioVisualiser():
         # Initialize Pygame
         # Set these first so it shows correctly
         pygame.display.set_caption("Audio Visualiser")
-        icon_path = Functions.resource_path('assets/ico/ico.png')
+        icon_path = functions.resource_path('assets/ico/ico.png')
         pygame.display.set_icon(pygame.image.load(icon_path))
         # Init pygame graphics engine
         pygame.init()
@@ -238,7 +238,7 @@ class AudioVisualiser():
 
         # Spotify #
         # Spotify Branding
-        spotify_icon_path = Functions.resource_path('assets/ico/spotify.png')
+        spotify_icon_path = functions.resource_path('assets/ico/spotify.png')
         spotify_icon = pygame.image.load(spotify_icon_path).convert_alpha()
         spotify_icon = pygame.transform.smoothscale_by(spotify_icon, 0.04)
         # Load Spotify Data

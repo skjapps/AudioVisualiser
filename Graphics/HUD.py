@@ -3,7 +3,7 @@ import pygame
 
 from pathlib import Path
 
-from Default import Functions
+from Default import functions
 
 class HUD():
     def __init__(self, HUD_size):
@@ -11,7 +11,7 @@ class HUD():
     
         self.spotify_icon = pygame.transform.smoothscale_by(
                             pygame.image.load(
-                            Functions.resource_path('assets/ico/spotify.png')).convert_alpha(), 0.03)
+                            functions.resource_path('assets/ico/spotify.png')).convert_alpha(), 0.03)
 
         # Create HUD surface
         self.surface = pygame.Surface(self.size)

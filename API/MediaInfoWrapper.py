@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from PIL import Image
 from pathlib import Path
 
-from Default import Functions
+from Default import functions
 
 # WinRT is now winsdk
 import winsdk.windows.media.control as wmc # for media info
@@ -63,15 +63,15 @@ class MediaInfoWrapper():
                                         client_secret="bae6111d2ddf40f597c8dfb82c495227",
                                         redirect_uri="http://localhost:8080",
                                         cache_handler=CacheFileHandler(
-                                            cache_path=Functions.resource_path('.cache'))))
+                                            cache_path=functions.resource_path('.cache'))))
         
         # private, setup
         self._sp_last_update = current_tick
 
         # Make cache folders
-        if not os.path.exists(Functions.resource_path('cache/')):
-            os.makedirs(Functions.resource_path('cache/'))
-            os.makedirs(Functions.resource_path('cache/img/'))
+        if not os.path.exists(functions.resource_path('cache/')):
+            os.makedirs(functions.resource_path('cache/'))
+            os.makedirs(functions.resource_path('cache/img/'))
     
     # Returns true for update, otherwise no update, i.e: skip album art
     async def update(self, current_tick):
@@ -125,7 +125,7 @@ class MediaInfoWrapper():
             # print("return default values \n")
             self.song_name = "Loading..."
             self.artist_name = "Play Spotify Music..."
-            self.album_art_data = self.artist_image_data = open(Functions.resource_path('assets/ico/ico.png'), 'rb').read()
+            self.album_art_data = self.artist_image_data = open(functions.resource_path('assets/ico/ico.png'), 'rb').read()
             self.results = None
 
     # getting data with WinSDK
@@ -163,17 +163,17 @@ class MediaInfoWrapper():
     def CacheImage(self, url, get_colour):
         try:
             # Clear Cache above certain size
-            if (self.get_folder_size(Functions.resource_path('cache/')) >= (self.cache_limit * 2 ** 20)):
+            if (self.get_folder_size(functions.resource_path('cache/')) >= (self.cache_limit * 2 ** 20)):
                 # Remove the folder and its contents
-                shutil.rmtree(Functions.resource_path('cache/'))
+                shutil.rmtree(functions.resource_path('cache/'))
                 
                 # Make the folders
-                if not os.path.exists(Functions.resource_path('cache/')):
-                    os.makedirs(Functions.resource_path('cache/'))
-                    os.makedirs(Functions.resource_path('cache/img'))
+                if not os.path.exists(functions.resource_path('cache/')):
+                    os.makedirs(functions.resource_path('cache/'))
+                    os.makedirs(functions.resource_path('cache/img'))
 
             # Find the url
-            filename = Functions.resource_path('cache/img/' + url.split('/')[-1] + '.jpg')
+            filename = functions.resource_path('cache/img/' + url.split('/')[-1] + '.jpg')
             
             # Load image data and save if needed
             try:

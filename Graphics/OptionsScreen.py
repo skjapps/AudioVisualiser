@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import ttk
 
-from Default import Functions
+from Default import functions
 
 class OptionsScreen():
     def __init__(self, config):
@@ -17,7 +17,7 @@ class OptionsScreen():
                                     "Visualiser Size", "Oscilloscope Position", "Oscilloscope Size"]
 
         # Load the background image
-        image_path = Functions.resource_path('assets/img/options.png')
+        image_path = functions.resource_path('assets/img/options.png')
         self.background_image = Image.open(image_path)
         self.background_photo = ImageTk.PhotoImage(self.background_image)
 
