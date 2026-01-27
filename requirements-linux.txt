@@ -1,0 +1,7 @@
+requests
+numpy
+pygame-ce
+spotipy
+Pillow
+PyAudio
+python-dotenv

@@ -8,9 +8,14 @@ class AudioProcess():
     def perform_FFT(self, CHUNK, num_of_bars, bass_pump, smoothing_factor, low_pass_bass_reading, p):
         # AUDIO PROCESSING
         try:
-            fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
+            if p.mono_data is None or len(p.mono_data) == 0:
+                # Silent mode or no audio data
+                fft_data = np.zeros(CHUNK // 2)
+            else:
+                fft_data = np.abs(np.fft.fft(p.mono_data))[:CHUNK // 2]
         except Exception as error:
             print("An error occurred:", error)
+            fft_data = np.zeros(CHUNK // 2)
 
         # The new maths
         # Smooth interpretation

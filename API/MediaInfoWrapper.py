@@ -5,6 +5,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.cache_handler import CacheFileHandler
 import shutil
 import os
+import sys
 import colorsys
 import asyncio
 import threading
@@ -15,9 +16,10 @@ from pathlib import Path
 
 from Default import functions
 
-# WinRT is now winsdk
-import winsdk.windows.media.control as wmc # for media info
-import winsdk.windows.storage.streams as streams # For data stream
+# WinRT is now winsdk - only import on Windows
+if sys.platform == 'win32':
+    import winsdk.windows.media.control as wmc # for media info
+    import winsdk.windows.storage.streams as streams # For data stream
 
 
 def list_active_threads():
@@ -61,7 +63,7 @@ class MediaInfoWrapper():
                                         # client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
                                         client_id="f4b901c18dcf4bd98dc8e7624804d7f6", 
                                         client_secret="bae6111d2ddf40f597c8dfb82c495227",
-                                        redirect_uri="http://localhost:8080",
+                                        redirect_uri="http://127.0.0.1:8080",
                                         cache_handler=CacheFileHandler(
                                             cache_path=functions.resource_path('.cache'))))
         
